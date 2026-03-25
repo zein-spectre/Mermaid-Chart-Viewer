@@ -1,0 +1,3589 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mermaid Diagram Viewer</title>
+  <!-- Mermaid 11.13.0 loaded as ESM module (see bottom script) to support ZenUML external diagram -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0f14;
+      --surface: #161720;
+      --surface2: #1e2030;
+      --border: #2a2d3e;
+      --accent: #7c6af7;
+      --accent2: #4fc4cf;
+      --text: #cdd6f4;
+      --text-muted: #6c7086;
+      --text-dim: #45475a;
+      --editor-bg: #12131a;
+      --preview-bg: #0e0f14;
+      --sidebar-w: 220px;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-ui: 'Syne', sans-serif;
+      --tr: 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg: #f0f0f5;
+      --surface: #fff;
+      --surface2: #e8e8f0;
+      --border: #d0d0e0;
+      --accent: #5a4fd4;
+      --accent2: #2a9da8;
+      --text: #1e1e2e;
+      --text-muted: #6c6c8a;
+      --text-dim: #a0a0b8;
+      --editor-bg: #f8f8fc;
+      --preview-bg: #f0f0f5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background var(--tr), color var(--tr);
+    }
+
+    /* ── HEADER ── */
+    header {
+      height: 52px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .logo {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      user-select: none;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      -webkit-text-fill-color: var(--text-muted);
+    }
+
+    .logo-divider {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin: 0 2px;
+      user-select: none;
+    }
+
+    .logo-by {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      letter-spacing: .3px;
+      white-space: nowrap;
+    }
+
+    header .spacer {
+      flex: 1;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #a6e3a1;
+      flex-shrink: 0;
+      transition: background .2s;
+    }
+
+    .status-dot.error {
+      background: #f38ba8;
+    }
+
+    .status-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .icon-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(124, 106, 247, .1);
+    }
+
+    /* ── BODY ── */
+    .body-wrap {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width var(--tr), opacity var(--tr), min-width var(--tr);
+      min-width: var(--sidebar-w);
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      min-width: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar-header {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .sidebar-section {
+      padding: 12px 12px 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .dtype-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 0 8px;
+      overflow-y: auto;
+      flex: 1;
+      padding-bottom: 20px;
+    }
+
+    .dtype-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .dtype-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .dtype-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+      transition: all .15s;
+      width: 100%;
+    }
+
+    .dtype-btn:hover {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .dtype-btn.active {
+      background: rgba(124, 106, 247, .1);
+      color: var(--accent);
+      border-color: rgba(124, 106, 247, .28);
+    }
+
+    .dtype-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+
+    .dtype-btn.active .dtype-icon {
+      background: rgba(124, 106, 247, .18);
+    }
+
+    .dtype-label {
+      flex: 1;
+    }
+
+    .dtype-badge {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .dtype-btn.active .dtype-badge {
+      background: rgba(124, 106, 247, .12);
+      border-color: rgba(124, 106, 247, .3);
+      color: var(--accent);
+    }
+
+    .tpl-list {
+      display: none;
+      flex-direction: column;
+      gap: 1px;
+      padding: 2px 8px 6px 34px;
+    }
+
+    .tpl-list.visible {
+      display: flex;
+    }
+
+    .tpl-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 5px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-align: left;
+      white-space: nowrap;
+      transition: all .12s;
+      width: 100%;
+    }
+
+    .tpl-btn:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .tpl-btn::before {
+      content: '↳';
+      font-size: 10px;
+      opacity: .4;
+      margin-right: 2px;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── EDITOR ── */
+    .editor-panel {
+      width: 400px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--editor-bg);
+      border-right: 1px solid var(--border);
+      transition: width var(--tr), opacity var(--tr), transform var(--tr);
+      overflow: hidden;
+    }
+
+    .editor-panel.hidden {
+      width: 0;
+      opacity: 0;
+      transform: translateX(-20px);
+      pointer-events: none;
+    }
+
+    .panel-header {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .panel-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .panel-header .spacer {
+      flex: 1;
+    }
+
+    .type-tag {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(124, 106, 247, .1);
+      border: 1px solid rgba(124, 106, 247, .22);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .btn-clear {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .15s, border-color .15s;
+    }
+
+    .btn-clear:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .editor-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #editor {
+      width: 100%;
+      height: 100%;
+      background: var(--editor-bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 20px;
+      tab-size: 2;
+      caret-color: var(--accent);
+      transition: background var(--tr), color var(--tr);
+    }
+
+    #editor::placeholder {
+      color: var(--text-dim);
+    }
+
+    #editor::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #editor::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      width: 4px;
+      background: var(--border);
+      cursor: col-resize;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+
+    .divider:hover,
+    .divider.dragging {
+      background: var(--accent);
+    }
+
+    /* ── PREVIEW ── */
+    .preview-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--preview-bg);
+      overflow: hidden;
+    }
+
+    .preview-header {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .preview-header .spacer {
+      flex: 1;
+    }
+
+    .btn {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 13px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+      white-space: nowrap;
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--surface);
+    }
+
+    .btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .btn.active:hover {
+      background: #6a5be0;
+    }
+
+    .zoom-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 8px;
+      min-width: 44px;
+      text-align: center;
+      flex-shrink: 0;
+      cursor: default;
+      user-select: none;
+    }
+
+    .zoom-slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .zoom-slider-icon {
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      width: 20px;
+      text-align: center;
+      transition: color .15s;
+      flex-shrink: 0;
+    }
+
+    .zoom-slider-icon:hover {
+      color: var(--accent);
+    }
+
+    #zoomSlider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 110px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+
+    #zoomSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 2px solid var(--surface);
+      box-shadow: 0 0 0 1px var(--accent);
+      transition: transform .1s;
+    }
+
+    #zoomSlider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    #zoomSlider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 2px solid var(--surface);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .preview-viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+    }
+
+    .preview-viewport.panning {
+      cursor: grabbing !important;
+    }
+
+    .preview-viewport.space-held {
+      cursor: grab;
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-origin: 0 0;
+    }
+
+    #canvas.smooth-transform {
+      transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    #diagram-output {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+
+    #diagram-output svg {
+      height: auto;
+      display: block;
+      border-radius: 6px;
+      overflow: visible;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      transform: scale(0.95) translateY(10px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      display: flex;
+      border-radius: 4px;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .select-input,
+    .text-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .select-input:focus,
+    .text-input:focus {
+      border-color: var(--accent);
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--surface2);
+      border-radius: 0 0 12px 12px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: #6a5be0;
+    }
+
+    .error-message {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #f38ba8;
+      background: rgba(243, 139, 168, .08);
+      border: 1px solid rgba(243, 139, 168, .2);
+      border-radius: 8px;
+      padding: 16px 20px;
+      max-width: 500px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .empty-hint {
+      text-align: center;
+      color: var(--text-dim);
+    }
+
+    .empty-hint .icon {
+      font-size: 38px;
+      margin-bottom: 12px;
+      opacity: .45;
+    }
+
+    .empty-hint p {
+      font-size: 13px;
+      line-height: 1.6;
+      font-family: var(--font-mono);
+    }
+
+    .kb-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      z-index: 5;
+      pointer-events: none;
+      line-height: 1.9;
+    }
+
+    kbd {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+    }
+
+    /* ── HIDE MERMAID NATIVE ERROR VISUALS ── */
+    /* Mermaid injects its bomb/error SVG into body — hide leftover ones.
+     NOTE: We do NOT hide body > svg globally because Mermaid needs
+     temporary SVGs in body for text measurement during rendering. */
+    #d0,
+    #d1,
+    #d2,
+    #d3,
+    #d4,
+    #d5 {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      pointer-events: none !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <button class="icon-btn active" id="btnSidebarToggle" title="Toggle sidebar">☰</button>
+    <span class="logo">MERMAID</span>
+    <span class="logo-sub">Viewer</span>
+    <span class="logo-divider">|</span>
+    <span class="logo-by">by Salam MZein</span>
+    <div class="spacer"></div>
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">ready</span>
+  </header>
+
+  <div class="body-wrap">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Diagram Types</span>
+      </div>
+      <div class="dtype-list">
+
+        <div class="sidebar-section">General</div>
+
+        <button class="dtype-btn active" data-type="flowchart" id="dtype-flowchart">
+          <span class="dtype-icon">◈</span>
+          <span class="dtype-label">Flowchart</span>
+          <span class="dtype-badge">graph</span>
+        </button>
+        <div class="tpl-list visible" id="tpl-flowchart">
+          <button class="tpl-btn" data-tpl="flowchart-basic">Basic flow</button>
+          <button class="tpl-btn" data-tpl="flowchart-lr">Left → Right</button>
+          <button class="tpl-btn" data-tpl="flowchart-decision">Decision tree</button>
+          <button class="tpl-btn" data-tpl="flowchart-subgraph">Subgraph</button>
+        </div>
+
+        <button class="dtype-btn" data-type="sequence" id="dtype-sequence">
+          <span class="dtype-icon">⇄</span>
+          <span class="dtype-label">Sequence</span>
+          <span class="dtype-badge">seq</span>
+        </button>
+        <div class="tpl-list" id="tpl-sequence">
+          <button class="tpl-btn" data-tpl="seq-basic">Basic messages</button>
+          <button class="tpl-btn" data-tpl="seq-activation">Activation</button>
+          <button class="tpl-btn" data-tpl="seq-loop">Loop &amp; Alt</button>
+          <button class="tpl-btn" data-tpl="seq-parallel">Parallel</button>
+          <button class="tpl-btn" data-tpl="seq-notes">Notes &amp; Rect</button>
+          <button class="tpl-btn" data-tpl="seq-actors">Actor types</button>
+          <button class="tpl-btn" data-tpl="seq-creation">Create &amp; Destroy</button>
+          <button class="tpl-btn" data-tpl="seq-critical">Critical region</button>
+          <button class="tpl-btn" data-tpl="seq-autonumber">Autonumber</button>
+        </div>
+
+        <div class="sidebar-section">UML</div>
+
+        <button class="dtype-btn" data-type="class" id="dtype-class">
+          <span class="dtype-icon">⬡</span>
+          <span class="dtype-label">Class Diagram</span>
+          <span class="dtype-badge">UML</span>
+        </button>
+        <div class="tpl-list" id="tpl-class">
+          <button class="tpl-btn" data-tpl="class-basic">Basic class</button>
+          <button class="tpl-btn" data-tpl="class-members">Members &amp; visibility</button>
+          <button class="tpl-btn" data-tpl="class-relations">All relations</button>
+          <button class="tpl-btn" data-tpl="class-inheritance">Inheritance tree</button>
+          <button class="tpl-btn" data-tpl="class-annotations">Annotations</button>
+          <button class="tpl-btn" data-tpl="class-cardinality">Cardinality</button>
+          <button class="tpl-btn" data-tpl="class-namespace">Namespace</button>
+          <button class="tpl-btn" data-tpl="class-generics">Generic types</button>
+          <button class="tpl-btn" data-tpl="class-direction">Direction RL</button>
+        </div>
+
+        <button class="dtype-btn" data-type="state" id="dtype-state">
+          <span class="dtype-icon">◎</span>
+          <span class="dtype-label">State Diagram</span>
+          <span class="dtype-badge">state</span>
+        </button>
+        <div class="tpl-list" id="tpl-state">
+          <button class="tpl-btn" data-tpl="state-basic">Basic states</button>
+          <button class="tpl-btn" data-tpl="state-composite">Composite states</button>
+          <button class="tpl-btn" data-tpl="state-choice">Choice</button>
+          <button class="tpl-btn" data-tpl="state-fork">Fork &amp; Join</button>
+          <button class="tpl-btn" data-tpl="state-notes">Notes</button>
+          <button class="tpl-btn" data-tpl="state-concurrency">Concurrency</button>
+          <button class="tpl-btn" data-tpl="state-direction">Direction LR</button>
+        </div>
+
+        <button class="dtype-btn" data-type="er" id="dtype-er">
+          <span class="dtype-icon">⊞</span>
+          <span class="dtype-label">ER Diagram</span>
+          <span class="dtype-badge">erd</span>
+        </button>
+        <div class="tpl-list" id="tpl-er">
+          <button class="tpl-btn" data-tpl="er-basic">Basic ER</button>
+          <button class="tpl-btn" data-tpl="er-attributes">With attributes</button>
+          <button class="tpl-btn" data-tpl="er-keys">Keys &amp; comments</button>
+          <button class="tpl-btn" data-tpl="er-identifying">Identifying vs non</button>
+          <button class="tpl-btn" data-tpl="er-aliases">Entity aliases</button>
+          <button class="tpl-btn" data-tpl="er-direction-lr">Direction LR</button>
+        </div>
+
+        <div class="sidebar-section">Other</div>
+
+        <button class="dtype-btn" data-type="journey" id="dtype-journey">
+          <span class="dtype-icon">⟿</span>
+          <span class="dtype-label">User Journey</span>
+          <span class="dtype-badge">journey</span>
+        </button>
+        <div class="tpl-list" id="tpl-journey">
+          <button class="tpl-btn" data-tpl="journey-basic">Working day</button>
+          <button class="tpl-btn" data-tpl="journey-shopping">Online shopping</button>
+          <button class="tpl-btn" data-tpl="journey-onboarding">User onboarding</button>
+        </div>
+
+        <button class="dtype-btn" data-type="gantt" id="dtype-gantt">
+          <span class="dtype-icon">▤</span>
+          <span class="dtype-label">Gantt</span>
+          <span class="dtype-badge">gantt</span>
+        </button>
+        <div class="tpl-list" id="tpl-gantt">
+          <button class="tpl-btn" data-tpl="gantt-basic">Basic Gantt</button>
+          <button class="tpl-btn" data-tpl="gantt-full">Full syntax</button>
+          <button class="tpl-btn" data-tpl="gantt-milestone">Milestones</button>
+          <button class="tpl-btn" data-tpl="gantt-excludes">Excludes weekends</button>
+          <button class="tpl-btn" data-tpl="gantt-barchart">Bar chart style</button>
+        </div>
+
+        <button class="dtype-btn" data-type="pie" id="dtype-pie">
+          <span class="dtype-icon">◔</span>
+          <span class="dtype-label">Pie Chart</span>
+          <span class="dtype-badge">pie</span>
+        </button>
+        <div class="tpl-list" id="tpl-pie">
+          <button class="tpl-btn" data-tpl="pie-basic">Basic pie</button>
+          <button class="tpl-btn" data-tpl="pie-showdata">Show data values</button>
+          <button class="tpl-btn" data-tpl="pie-textposition">Text position</button>
+        </div>
+
+        <button class="dtype-btn" data-type="quadrant" id="dtype-quadrant">
+          <span class="dtype-icon">⊞</span>
+          <span class="dtype-label">Quadrant Chart</span>
+          <span class="dtype-badge">quad</span>
+        </button>
+        <div class="tpl-list" id="tpl-quadrant">
+          <button class="tpl-btn" data-tpl="quadrant-basic">Campaign reach</button>
+          <button class="tpl-btn" data-tpl="quadrant-priority">Priority matrix</button>
+          <button class="tpl-btn" data-tpl="quadrant-nopoints">No points</button>
+          <button class="tpl-btn" data-tpl="quadrant-styled">Point styling</button>
+        </div>
+
+        <div class="sidebar-section">DevOps</div>
+
+        <button class="dtype-btn" data-type="gitgraph" id="dtype-gitgraph">
+          <span class="dtype-icon">⎇</span>
+          <span class="dtype-label">Git Graph</span>
+          <span class="dtype-badge">git</span>
+        </button>
+        <div class="tpl-list" id="tpl-gitgraph">
+          <button class="tpl-btn" data-tpl="git-basic">Basic commits</button>
+          <button class="tpl-btn" data-tpl="git-branch-merge">Branch & merge</button>
+          <button class="tpl-btn" data-tpl="git-commit-types">Commit types</button>
+          <button class="tpl-btn" data-tpl="git-gitflow">Git flow</button>
+          <button class="tpl-btn" data-tpl="git-tags">Tags & IDs</button>
+        </div>
+
+        <div class="sidebar-section">Architecture</div>
+
+        <button class="dtype-btn" data-type="c4" id="dtype-c4">
+          <span class="dtype-icon">⬛</span>
+          <span class="dtype-label">C4 Diagram</span>
+          <span class="dtype-badge">c4</span>
+        </button>
+        <div class="tpl-list" id="tpl-c4">
+          <button class="tpl-btn" data-tpl="c4-context">System context</button>
+          <button class="tpl-btn" data-tpl="c4-container">Container</button>
+          <button class="tpl-btn" data-tpl="c4-component">Component</button>
+          <button class="tpl-btn" data-tpl="c4-dynamic">Dynamic</button>
+          <button class="tpl-btn" data-tpl="c4-deployment">Deployment</button>
+        </div>
+
+        <button class="dtype-btn" data-type="mindmap" id="dtype-mindmap">
+          <span class="dtype-icon">✦</span>
+          <span class="dtype-label">Mindmap</span>
+          <span class="dtype-badge">mind</span>
+        </button>
+        <div class="tpl-list" id="tpl-mindmap">
+          <button class="tpl-btn" data-tpl="mindmap-basic">Basic</button>
+          <button class="tpl-btn" data-tpl="mindmap-shapes">Shapes</button>
+          <button class="tpl-btn" data-tpl="mindmap-project">Project plan</button>
+          <button class="tpl-btn" data-tpl="mindmap-study">Study notes</button>
+        </div>
+
+        <button class="dtype-btn" data-type="timeline" id="dtype-timeline">
+          <span class="dtype-icon">⟶</span>
+          <span class="dtype-label">Timeline</span>
+          <span class="dtype-badge">time</span>
+        </button>
+        <div class="tpl-list" id="tpl-timeline">
+          <button class="tpl-btn" data-tpl="timeline-basic">Basic</button>
+          <button class="tpl-btn" data-tpl="timeline-multi-event">Multi-event</button>
+          <button class="tpl-btn" data-tpl="timeline-sections">Sections</button>
+          <button class="tpl-btn" data-tpl="timeline-project">Project roadmap</button>
+        </div>
+
+        <button class="dtype-btn" data-type="zenuml" id="dtype-zenuml">
+          <span class="dtype-icon">⇌</span>
+          <span class="dtype-label">ZenUML</span>
+          <span class="dtype-badge">zen</span>
+        </button>
+        <div class="tpl-list" id="tpl-zenuml">
+          <button class="tpl-btn" data-tpl="zen-basic">Basic messages</button>
+          <button class="tpl-btn" data-tpl="zen-nesting">Nesting</button>
+          <button class="tpl-btn" data-tpl="zen-conditions">Conditions</button>
+          <button class="tpl-btn" data-tpl="zen-loop">Loop</button>
+          <button class="tpl-btn" data-tpl="zen-trycatch">Try / Catch</button>
+        </div>
+
+        <div class="sidebar-section">Data</div>
+
+        <button class="dtype-btn" data-type="sankey" id="dtype-sankey">
+          <span class="dtype-icon">≋</span>
+          <span class="dtype-label">Sankey</span>
+          <span class="dtype-badge">flow</span>
+        </button>
+        <div class="tpl-list" id="tpl-sankey">
+          <button class="tpl-btn" data-tpl="sankey-basic">Basic flow</button>
+          <button class="tpl-btn" data-tpl="sankey-energy">Energy system</button>
+          <button class="tpl-btn" data-tpl="sankey-budget">Budget flow</button>
+        </div>
+
+        <button class="dtype-btn" data-type="xychart" id="dtype-xychart">
+          <span class="dtype-icon">⬚</span>
+          <span class="dtype-label">XY Chart</span>
+          <span class="dtype-badge">xy</span>
+        </button>
+        <div class="tpl-list" id="tpl-xychart">
+          <button class="tpl-btn" data-tpl="xy-bar">Bar chart</button>
+          <button class="tpl-btn" data-tpl="xy-line">Line chart</button>
+          <button class="tpl-btn" data-tpl="xy-bar-line">Bar + Line</button>
+          <button class="tpl-btn" data-tpl="xy-horizontal">Horizontal</button>
+        </div>
+
+        <button class="dtype-btn" data-type="block" id="dtype-block">
+          <span class="dtype-icon">▦</span>
+          <span class="dtype-label">Block Diagram</span>
+          <span class="dtype-badge">block</span>
+        </button>
+        <div class="tpl-list" id="tpl-block">
+          <button class="tpl-btn" data-tpl="block-basic">Basic blocks</button>
+          <button class="tpl-btn" data-tpl="block-shapes">Shapes</button>
+          <button class="tpl-btn" data-tpl="block-nested">Nested blocks</button>
+          <button class="tpl-btn" data-tpl="block-arch">System architecture</button>
+        </div>
+
+        <button class="dtype-btn" data-type="packet" id="dtype-packet">
+          <span class="dtype-icon">⊟</span>
+          <span class="dtype-label">Packet Diagram</span>
+          <span class="dtype-badge">pkt</span>
+        </button>
+        <div class="tpl-list" id="tpl-packet">
+          <button class="tpl-btn" data-tpl="packet-basic">Basic fields</button>
+          <button class="tpl-btn" data-tpl="packet-tcp">TCP packet</button>
+          <button class="tpl-btn" data-tpl="packet-udp">UDP packet</button>
+          <button class="tpl-btn" data-tpl="packet-ipv4">IPv4 header</button>
+        </div>
+
+        <button class="dtype-btn" data-type="kanban" id="dtype-kanban">
+          <span class="dtype-icon">⊟</span>
+          <span class="dtype-label">Kanban</span>
+          <span class="dtype-badge">kanban</span>
+        </button>
+        <div class="tpl-list" id="tpl-kanban">
+          <button class="tpl-btn" data-tpl="kanban-basic">Basic board</button>
+          <button class="tpl-btn" data-tpl="kanban-metadata">With metadata</button>
+          <button class="tpl-btn" data-tpl="kanban-workflow">Full workflow</button>
+          <button class="tpl-btn" data-tpl="kanban-priority">Priority board</button>
+        </div>
+
+        <button class="dtype-btn" data-type="architecture" id="dtype-architecture">
+          <span class="dtype-icon">⬡</span>
+          <span class="dtype-label">Architecture</span>
+          <span class="dtype-badge">arch</span>
+        </button>
+        <div class="tpl-list" id="tpl-architecture">
+          <button class="tpl-btn" data-tpl="arch-basic">Basic services</button>
+          <button class="tpl-btn" data-tpl="arch-arrows">With arrows</button>
+          <button class="tpl-btn" data-tpl="arch-junction">Junction</button>
+          <button class="tpl-btn" data-tpl="arch-nested">Nested groups</button>
+        </div>
+
+        <button class="dtype-btn" data-type="radar" id="dtype-radar">
+          <span class="dtype-icon">◉</span>
+          <span class="dtype-label">Radar Chart</span>
+          <span class="dtype-badge">radar</span>
+        </button>
+        <div class="tpl-list" id="tpl-radar">
+          <button class="tpl-btn" data-tpl="radar-basic">Basic radar</button>
+          <button class="tpl-btn" data-tpl="radar-grades">Grades compare</button>
+          <button class="tpl-btn" data-tpl="radar-polygon">Polygon graticule</button>
+          <button class="tpl-btn" data-tpl="radar-skills">Skills matrix</button>
+        </div>
+
+        <button class="dtype-btn" data-type="treemap" id="dtype-treemap">
+          <span class="dtype-icon">▦</span>
+          <span class="dtype-label">Treemap</span>
+          <span class="dtype-badge">treemap</span>
+        </button>
+        <div class="tpl-list" id="tpl-treemap">
+          <button class="tpl-btn" data-tpl="treemap-basic">Basic treemap</button>
+          <button class="tpl-btn" data-tpl="treemap-hierarchical">Hierarchical</button>
+          <button class="tpl-btn" data-tpl="treemap-budget">Budget data</button>
+          <button class="tpl-btn" data-tpl="treemap-org">Org structure</button>
+        </div>
+
+        <button class="dtype-btn" data-type="venn" id="dtype-venn">
+          <span class="dtype-icon">⊇</span>
+          <span class="dtype-label">Venn Diagram</span>
+          <span class="dtype-badge">venn</span>
+        </button>
+        <div class="tpl-list" id="tpl-venn">
+          <button class="tpl-btn" data-tpl="venn-basic">Basic 2-set</button>
+          <button class="tpl-btn" data-tpl="venn-triple">Triple set</button>
+          <button class="tpl-btn" data-tpl="venn-text">With text nodes</button>
+          <button class="tpl-btn" data-tpl="venn-sized">Sized sets</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="editor-panel" id="editorPanel">
+        <div class="panel-header">
+          <span class="panel-title">Editor</span>
+          <span class="type-tag" id="typeTag">Flowchart</span>
+          <div class="spacer"></div>
+          <button class="btn-clear" id="btnClear">Clear</button>
+        </div>
+        <div class="editor-wrap">
+          <textarea id="editor" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off"
+            data-gramm="false" placeholder="Ketik atau paste syntax Mermaid di sini..."></textarea>
+        </div>
+      </div>
+
+      <div class="divider" id="divider"></div>
+
+      <div class="preview-panel">
+        <div class="preview-header">
+          <span class="panel-title">Preview</span>
+          <div class="spacer"></div>
+          <div class="zoom-slider-wrap">
+            <span class="zoom-slider-icon" id="btnZoomOut" title="Zoom out">−</span>
+            <input type="range" id="zoomSlider" min="50" max="500" value="100" step="5" title="Zoom">
+            <span class="zoom-slider-icon" id="btnZoomIn" title="Zoom in">+</span>
+          </div>
+          <div class="zoom-badge" id="zoomBadge">100%</div>
+          <button class="icon-btn" id="btnReset" title="Reset view">⊹</button>
+          <button class="icon-btn" id="btnTheme" title="Toggle theme">☀</button>
+          <button class="btn" id="btnExport">⬇ Export</button>
+          <button class="btn" id="btnFullWindow">⬜ Full Window</button>
+        </div>
+        <div class="preview-viewport" id="viewport">
+          <div id="canvas">
+            <div id="diagram-output">
+              <div class="empty-hint">
+                <div class="icon">◈</div>
+                <p>Diagram akan muncul di sini<br>setelah Anda mulai mengetik.</p>
+              </div>
+            </div>
+          </div>
+          <div class="kb-hint">
+            <span><kbd>Space</kbd> + drag → Pan</span><br>
+            <span>Middle-click drag → Pan</span><br>
+            <span>Scroll → Zoom</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Modal (inside body-wrap to avoid cleanup removal) -->
+    <div class="modal-overlay" id="exportModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">⬇ Export Diagram</div>
+          <button class="modal-close" id="btnCloseExport">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Format</label>
+            <select class="select-input" id="expFormat">
+              <option value="png">PNG Image</option>
+              <option value="pdf">PDF Document</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Size</label>
+            <select class="select-input" id="expSize">
+              <option value="fit">Fit Diagram (Auto)</option>
+              <option value="a4">A4 (210 × 297 mm)</option>
+              <option value="letter">Letter (8.5 × 11 in)</option>
+              <option value="legal">Legal (8.5 × 14 in)</option>
+            </select>
+          </div>
+          <div class="form-group" id="groupOrientation" style="display: none;">
+            <label>Orientation</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="expOri" value="portrait" checked> Portrait</label>
+              <label class="radio-label"><input type="radio" name="expOri" value="landscape"> Landscape</label>
+            </div>
+          </div>
+          <div class="form-group" id="groupMargin" style="display: none;">
+            <label>Margin (mm)</label>
+            <input type="number" class="text-input" id="expMargin" value="20" min="0" max="100">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" id="btnCancelExport">Cancel</button>
+          <button class="btn btn-primary" id="btnConfirmExport">Download</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.13.0/dist/mermaid.esm.min.mjs';
+    import zenuml from 'https://cdn.jsdelivr.net/npm/@mermaid-js/mermaid-zenuml@0.2.2/dist/mermaid-zenuml.esm.min.mjs';
+    await mermaid.registerExternalDiagrams([zenuml]);
+
+    (function () {
+
+      /* ═══════════════════════════════════════════════════════
+         TEMPLATES  — all verified against Mermaid 10.9.3 syntax
+      ═══════════════════════════════════════════════════════ */
+      const T = {
+
+        /* FLOWCHART */
+        'flowchart-basic':
+          `graph TD
+A([Start]) --> B{Is it working?}
+B -->|Yes| C[Ship it]
+B -->|No| D[Debug]
+D --> E[Fix the issue]
+E --> B
+C --> F([Done])`,
+
+        'flowchart-lr':
+          `graph LR
+A[Input] --> B[Process A]
+A --> C[Process B]
+B --> D{Merge?}
+C --> D
+D --> E[Output]`,
+
+        'flowchart-decision':
+          `graph TD
+A[User Login] --> B{Credentials valid?}
+B -->|Yes| C{Has 2FA?}
+B -->|No| F[Show error]
+C -->|Yes| D[Request OTP]
+C -->|No| E[Grant access]
+D --> G{OTP correct?}
+G -->|Yes| E
+G -->|No| H[Block attempt]`,
+
+        'flowchart-subgraph':
+          `graph TB
+subgraph Frontend
+  A[React App] --> B[API Client]
+end
+subgraph Backend
+  C[REST API] --> D[Business Logic]
+  D --> E[(Database)]
+end
+B --> C`,
+
+        /* SEQUENCE */
+        'seq-basic':
+          `sequenceDiagram
+participant Alice
+participant John
+Alice->>John: Hello John, how are you?
+John-->>Alice: Great!
+Alice-)John: See you later!`,
+
+        'seq-activation':
+          `sequenceDiagram
+Alice->>+John: Hello John, how are you?
+Alice->>+John: John, can you hear me?
+John-->>-Alice: Hi Alice, I can hear you!
+John-->>-Alice: I feel great!`,
+
+        'seq-loop':
+          `sequenceDiagram
+Alice->>Bob: Hello Bob, how are you?
+alt is sick
+    Bob->>Alice: Not so good
+else is well
+    Bob->>Alice: Feeling fresh like a daisy
+end
+opt Extra response
+    Bob->>Alice: Thanks for asking
+end
+loop Every minute
+    Alice-->>Bob: Are you OK?
+end`,
+
+        'seq-parallel':
+          `sequenceDiagram
+par Alice to Bob
+    Alice->>Bob: Hello guys!
+and Alice to John
+    Alice->>John: Hello guys!
+end
+Bob-->>Alice: Hi Alice!
+John-->>Alice: Hi Alice!`,
+
+        'seq-notes':
+          `sequenceDiagram
+participant Alice
+participant John
+Note right of Alice: Alice calls John.
+Alice->>+John: Hello John, how are you?
+Alice->>+John: John, can you hear me?
+John-->>-Alice: Hi Alice, I can hear you!
+John-->>-Alice: I feel great!
+Note over Alice,John: A typical interaction`,
+
+        'seq-actors':
+          `sequenceDiagram
+participant API as Public API
+participant Auth as Auth Service
+participant DB as User Database
+API->>Auth: Login request
+Auth->>DB: Query user
+DB-->>Auth: User data
+Auth-->>API: Access token`,
+
+        'seq-creation':
+          `sequenceDiagram
+Alice->>Bob: Hello Bob, how are you?
+Bob->>Alice: Fine, thank you. And you?
+create participant Carl
+Alice->>Carl: Hi Carl!
+destroy Carl
+Alice-xCarl: We are too many
+destroy Bob
+Bob->>Alice: I agree`,
+
+        'seq-critical':
+          `sequenceDiagram
+critical Establish a connection to the DB
+    Service-->DB: connect
+option Network timeout
+    Service-->Service: Log error
+option Credentials rejected
+    Service-->Service: Log different error
+end`,
+
+        'seq-autonumber':
+          `sequenceDiagram
+autonumber
+Alice->>John: Hello John, how are you?
+loop HealthCheck
+    John->>John: Fight against hypochondria
+end
+Note right of John: Rational thoughts!
+John-->>Alice: Great!
+John->>Bob: How about you?
+Bob-->>John: Jolly good!`,
+
+        /* CLASS DIAGRAM */
+        'class-basic':
+          `classDiagram
+Animal <|-- Duck
+Animal <|-- Fish
+Animal <|-- Zebra
+Animal : +int age
+Animal : +String gender
+Animal : +isMammal()
+Animal : +mate()
+class Duck{
+  +String beakColor
+  +swim()
+  +quack()
+}
+class Fish{
+  -int sizeInFeet
+  -canEat()
+}
+class Zebra{
+  +bool is_wild
+  +run()
+}`,
+
+        'class-members':
+          `classDiagram
+class BankAccount{
+  +String owner
+  +BigDecimal balance
+  +deposit(amount) bool
+  +withdrawal(amount) int
+  +getHistory() List~Transaction~
+  +clearAccount() void
+}
+class Transaction{
+  +String id
+  +BigDecimal amount
+  +Date timestamp
+  +getDetails() String
+}
+BankAccount "1" --> "*" Transaction : records`,
+
+        'class-relations':
+          `classDiagram
+classA <|-- classB : Inheritance
+classC *-- classD : Composition
+classE o-- classF : Aggregation
+classG --> classH : Association
+classI -- classJ : Link
+classK ..> classL : Dependency
+classM ..|> classN : Realization
+classO .. classP : Dashed`,
+
+        'class-inheritance':
+          `classDiagram
+class Shape{
+  <<interface>>
+  +draw() void
+  +getArea() float
+}
+class Circle{
+  +float radius
+  +draw() void
+  +getArea() float
+}
+class Rectangle{
+  +float width
+  +float height
+  +draw() void
+  +getArea() float
+}
+class Triangle{
+  +float base
+  +float height
+  +draw() void
+  +getArea() float
+}
+Shape <|.. Circle
+Shape <|.. Rectangle
+Shape <|.. Triangle`,
+
+        'class-annotations':
+          `classDiagram
+class Animal{
+  <<abstract>>
+  +String name
+  +makeSound() void
+}
+class Dog{
+  +fetch() void
+}
+class Cat{
+  +purr() void
+}
+class IPet{
+  <<interface>>
+  +getOwner() String
+}
+class PetType{
+  <<enumeration>>
+  DOG
+  CAT
+  BIRD
+}
+Animal <|-- Dog
+Animal <|-- Cat
+Dog ..|> IPet
+Cat ..|> IPet`,
+
+        'class-cardinality':
+          `classDiagram
+class Customer{
+  +String name
+  +String email
+}
+class Order{
+  +String orderId
+  +getTotal() float
+}
+class Product{
+  +String name
+  +float price
+}
+Customer "1" --> "0..*" Order : places
+Order "1" --> "1..*" Product : contains`,
+
+        'class-namespace':
+          `classDiagram
+namespace Shapes {
+  class Triangle{
+    +float base
+    +float height
+  }
+  class Rectangle{
+    +float width
+    +float height
+  }
+}
+namespace Utils {
+  class MathHelper{
+    +sqrt(n) float
+    +pow(b, e) float
+  }
+}
+Triangle --> MathHelper : uses
+Rectangle --> MathHelper : uses`,
+
+        'class-generics':
+          `classDiagram
+class Stack~T~{
+  -List~T~ items
+  +push(item T) void
+  +pop() T
+  +isEmpty() bool
+}
+class Queue~T~{
+  -List~T~ items
+  +enqueue(item T) void
+  +dequeue() T
+  +isEmpty() bool
+}
+class Repository~T~{
+  <<interface>>
+  +findById(id String) T
+  +findAll() List~T~
+  +save(entity T) void
+}`,
+
+        'class-direction':
+          `classDiagram
+direction RL
+class Student {
+  -String name
+  +study() void
+}
+class IdCard{
+  -int id
+  -String name
+  +isValid() bool
+}
+class Bike{
+  -String model
+  +ride() void
+}
+Student "1" --> "1" IdCard : carries
+Student "1" --> "1" Bike : rides`,
+
+        /* STATE DIAGRAM */
+        'state-basic':
+          `stateDiagram-v2
+[*] --> Still
+Still --> [*]
+Still --> Moving
+Moving --> Still
+Moving --> Crash
+Crash --> [*]`,
+
+        'state-composite':
+          `stateDiagram-v2
+[*] --> First
+state First {
+  [*] --> second
+  second --> [*]
+}
+[*] --> NamedComposite
+NamedComposite: Another Composite
+state NamedComposite {
+  [*] --> namedSimple
+  namedSimple --> [*]
+  namedSimple: Another simple
+}`,
+
+        'state-choice':
+          `stateDiagram-v2
+state if_state <<choice>>
+[*] --> IsPositive
+IsPositive --> if_state
+if_state --> False: if n < 0
+if_state --> True: if n >= 0`,
+
+        'state-fork':
+          `stateDiagram-v2
+state fork_state <<fork>>
+[*] --> fork_state
+fork_state --> State2
+fork_state --> State3
+state join_state <<join>>
+State2 --> join_state
+State3 --> join_state
+join_state --> State4
+State4 --> [*]`,
+
+        'state-notes':
+          `stateDiagram-v2
+State1: The state with a note
+note right of State1
+  Important information!
+  You can write notes.
+end note
+State1 --> State2
+note left of State2: This is the note to the left.`,
+
+        'state-concurrency':
+          `stateDiagram-v2
+[*] --> Active
+state Active {
+  [*] --> NumLockOff
+  NumLockOff --> NumLockOn: EvNumLockPressed
+  NumLockOn --> NumLockOff: EvNumLockPressed
+  --
+  [*] --> CapsLockOff
+  CapsLockOff --> CapsLockOn: EvCapsLockPressed
+  CapsLockOn --> CapsLockOff: EvCapsLockPressed
+  --
+  [*] --> ScrollLockOff
+  ScrollLockOff --> ScrollLockOn: EvScrollLockPressed
+  ScrollLockOn --> ScrollLockOff: EvScrollLockPressed
+}`,
+
+        'state-direction':
+          `stateDiagram-v2
+direction LR
+[*] --> A
+A --> B
+B --> C
+state B {
+  direction LR
+  a --> b
+}
+B --> D`,
+
+        /* ER DIAGRAM */
+        'er-basic':
+          `erDiagram
+CUSTOMER ||--o{ ORDER : places
+ORDER ||--|{ LINE-ITEM : contains
+CUSTOMER }|..|{ DELIVERY-ADDRESS : uses`,
+
+        'er-attributes':
+          `erDiagram
+CUSTOMER ||--o{ ORDER : places
+CUSTOMER {
+  string name
+  string custNumber
+  string sector
+}
+ORDER ||--|{ LINE-ITEM : contains
+ORDER {
+  int orderNumber
+  string deliveryAddress
+}
+LINE-ITEM {
+  string productCode
+  int quantity
+  float pricePerUnit
+}`,
+
+        'er-keys':
+          `erDiagram
+CAR ||--o{ NAMED-DRIVER : allows
+CAR {
+  string registrationNumber PK
+  string make
+  string model
+}
+PERSON ||--o{ NAMED-DRIVER : is
+PERSON {
+  string driversLicense PK "The license number"
+  string firstName
+  string lastName
+  string phone UK
+  int age
+}
+NAMED-DRIVER {
+  string carRegistrationNumber PK,FK
+  string driverLicence PK,FK
+}`,
+
+        'er-identifying':
+          `erDiagram
+CAR ||--o{ NAMED-DRIVER : allows
+PERSON }o..o{ NAMED-DRIVER : is
+CAR {
+  string registrationNumber
+  string make
+  string model
+}
+PERSON {
+  string firstName
+  string lastName
+  int age
+}`,
+
+        'er-aliases':
+          `erDiagram
+p[Person] {
+  string firstName
+  string lastName
+}
+a["Customer Account"] {
+  string email
+  string plan
+}
+p ||--o| a : has`,
+
+        'er-direction-lr':
+          `erDiagram
+direction LR
+CUSTOMER ||--o{ ORDER : places
+CUSTOMER {
+  string name
+  string custNumber
+  string sector
+}
+ORDER ||--|{ LINE-ITEM : contains
+ORDER {
+  int orderNumber
+  string deliveryAddress
+}
+LINE-ITEM {
+  string productCode
+  int quantity
+  float pricePerUnit
+}`,
+
+        /* USER JOURNEY */
+        'journey-basic':
+          `journey
+title My working day
+section Go to work
+  Make tea: 5: Me
+  Go upstairs: 3: Me
+  Do work: 1: Me, Cat
+section Go home
+  Go downstairs: 5: Me
+  Sit down: 5: Me`,
+
+        'journey-shopping':
+          `journey
+title Online Shopping Experience
+section Discovery
+  Search for product: 5: Customer
+  Browse results: 4: Customer
+  Read reviews: 3: Customer
+section Purchase
+  Add to cart: 5: Customer
+  Enter details: 2: Customer
+  Confirm order: 4: Customer
+section Delivery
+  Receive confirmation: 5: Customer
+  Track package: 3: Customer
+  Receive item: 5: Customer`,
+
+        'journey-onboarding':
+          `journey
+title User Onboarding Flow
+section Sign Up
+  Visit landing page: 4: User
+  Click sign up: 5: User
+  Fill in form: 2: User
+  Verify email: 3: User
+section Getting Started
+  Complete profile: 3: User
+  Take product tour: 4: User, System
+  Try first feature: 4: User
+section Activation
+  Invite team member: 3: User
+  Complete first task: 5: User
+  Receive achievement: 5: User, System`,
+
+        /* GANTT */
+        'gantt-basic':
+          `gantt
+title A Gantt Diagram
+dateFormat YYYY-MM-DD
+section Section
+  A task          :a1, 2014-01-01, 30d
+  Another task    :after a1, 20d
+section Another
+  Task in Another :2014-01-12, 12d
+  another task    :24d`,
+
+        'gantt-full':
+          `gantt
+dateFormat YYYY-MM-DD
+title Adding GANTT diagram functionality to mermaid
+excludes weekends
+section A section
+  Completed task        :done,   des1, 2014-01-06, 2014-01-08
+  Active task           :active, des2, 2014-01-09, 3d
+  Future task           :        des3, after des2, 5d
+  Future task2          :        des4, after des3, 5d
+section Critical tasks
+  Completed in crit line :crit, done, 2014-01-06, 24h
+  Implement parser       :crit, done, after des1, 2d
+  Create tests           :crit, active, 3d
+  Future crit task       :crit, 5d
+section Documentation
+  Describe gantt syntax  :active, a1, after des1, 3d
+  Add gantt to demo page :after a1, 20h
+  Add another diagram    :doc1, after a1, 48h
+section Last section
+  Describe gantt syntax  :after doc1, 3d
+  Add gantt to demo page :20h
+  Add another diagram    :48h`,
+
+        'gantt-milestone':
+          `gantt
+dateFormat HH:mm
+axisFormat %H:%M
+Initial milestone : milestone, m1, 17:49, 2m
+Task A            : 10m
+Task B            : 5m
+Final milestone   : milestone, m2, 18:08, 4m`,
+
+        'gantt-excludes':
+          `gantt
+title A Gantt Diagram Excluding Weekends
+dateFormat YYYY-MM-DD
+excludes weekends
+section Section
+  A task        :a1, 2024-01-01, 30d
+  Another task  :after a1, 20d`,
+
+        'gantt-barchart':
+          `gantt
+title Git Issues - days since last update
+dateFormat X
+axisFormat %s
+section Issue19062
+  71 : 0, 71
+section Issue19401
+  36 : 0, 36
+section Issue193
+  34 : 0, 34
+section Issue7441
+  9  : 0, 9
+section Issue1300
+  5  : 0, 5`,
+
+        /* PIE CHART */
+        'pie-basic':
+          `pie title Pets adopted by volunteers
+"Dogs" : 386
+"Cats" : 85
+"Rats" : 15`,
+
+        'pie-showdata':
+          `pie showData
+title Key elements in Product X
+"Calcium"   : 42.96
+"Potassium"  : 50.05
+"Magnesium"  : 10.01
+"Iron"       : 5`,
+
+        'pie-textposition':
+          `pie showData
+title Browser Market Share 2024
+"Chrome"  : 65.12
+"Safari"  : 18.75
+"Edge"    : 5.43
+"Firefox" : 3.08
+"Other"   : 7.62`,
+
+        /* QUADRANT CHART */
+        'quadrant-basic':
+          `quadrantChart
+title Reach and engagement of campaigns
+x-axis Low Reach --> High Reach
+y-axis Low Engagement --> High Engagement
+quadrant-1 We should expand
+quadrant-2 Need to promote
+quadrant-3 Re-evaluate
+quadrant-4 May be improved
+Campaign A: [0.3, 0.6]
+Campaign B: [0.45, 0.23]
+Campaign C: [0.57, 0.69]
+Campaign D: [0.78, 0.34]
+Campaign E: [0.40, 0.34]
+Campaign F: [0.35, 0.78]`,
+
+        'quadrant-priority':
+          `quadrantChart
+title Priority Matrix
+x-axis Low Effort --> High Effort
+y-axis Low Impact --> High Impact
+quadrant-1 Do Later
+quadrant-2 Quick Wins
+quadrant-3 Deprioritize
+quadrant-4 Major Projects
+Fix login bug: [0.2, 0.9]
+Add dark mode: [0.5, 0.7]
+Refactor DB: [0.8, 0.85]
+Update docs: [0.15, 0.4]
+New dashboard: [0.75, 0.6]
+Fix typos: [0.1, 0.15]
+API v2: [0.9, 0.95]`,
+
+        'quadrant-nopoints':
+          `quadrantChart
+title Eisenhower Matrix
+x-axis Urgent --> Not Urgent
+y-axis Not Important --> Important
+quadrant-1 Plan
+quadrant-2 Do
+quadrant-3 Delegate
+quadrant-4 Delete`,
+
+        'quadrant-styled':
+          `quadrantChart
+title Reach and engagement of campaigns
+x-axis Low Reach --> High Reach
+y-axis Low Engagement --> High Engagement
+quadrant-1 We should expand
+quadrant-2 Need to promote
+quadrant-3 Re-evaluate
+quadrant-4 May be improved
+Campaign A: [0.9, 0.0] radius: 12
+Campaign B:::class1: [0.8, 0.1] color: #ff3300, radius: 10
+Campaign C: [0.7, 0.2] radius: 25, color: #00ff33, stroke-color: #10f0f0
+Campaign D: [0.6, 0.3] radius: 15, stroke-color: #00ff0f, stroke-width: 5px
+Campaign E:::class2: [0.5, 0.4]
+Campaign F:::class3: [0.4, 0.5] color: #0000ff
+classDef class1 color: #109060
+classDef class2 color: #908342, radius: 10, stroke-color: #310085, stroke-width: 3px
+classDef class3 color: #f00fff, radius: 10`,
+
+        /* GITGRAPH */
+        'git-basic':
+          `gitGraph
+commit
+commit
+commit
+commit`,
+
+        'git-branch-merge':
+          `gitGraph
+commit
+commit
+branch develop
+commit
+commit
+commit
+checkout main
+commit
+commit
+merge develop
+commit
+commit`,
+
+        'git-commit-types':
+          `gitGraph
+commit id: "Normal"
+commit id: "Auto-1"
+commit id: "Reverse" type: REVERSE
+commit id: "Auto-2"
+commit id: "Highlight" type: HIGHLIGHT
+commit id: "Auto-3"`,
+
+        'git-gitflow':
+          `gitGraph
+commit id: "init"
+branch develop
+commit id: "dev-1"
+branch feature/login
+commit id: "login-1"
+commit id: "login-2"
+checkout develop
+merge feature/login id: "merge-login"
+commit id: "dev-2"
+branch release/1.0
+commit id: "rc-1"
+checkout main
+merge release/1.0 id: "v1.0.0" tag: "v1.0.0"
+checkout develop
+merge release/1.0
+commit id: "dev-3"`,
+
+        'git-tags':
+          `gitGraph
+commit id: "initial" tag: "v0.1"
+commit
+branch develop
+commit id: "feat-A" tag: "alpha"
+commit id: "feat-B"
+checkout main
+commit id: "hotfix" type: REVERSE tag: "v0.1.1"
+merge develop id: "release" tag: "v1.0.0"
+commit type: HIGHLIGHT`,
+
+        /* C4 DIAGRAM */
+        'c4-context':
+          `C4Context
+title System Context diagram for Online Shop
+Person(customer, "Customer", "A user of the online shop")
+Person_Ext(admin, "Admin", "Shop administrator")
+System(shop, "Online Shop", "Allows customers to browse and purchase products")
+System_Ext(payment, "Payment Gateway", "Handles payment processing")
+System_Ext(email, "Email System", "Sends order confirmations")
+Rel(customer, shop, "Uses")
+Rel(admin, shop, "Manages")
+Rel(shop, payment, "Processes payments via")
+Rel(shop, email, "Sends emails via")`,
+
+        'c4-container':
+          `C4Container
+title Container diagram for Online Shop
+Person(customer, "Customer", "A user of the online shop")
+System_Ext(payment, "Payment Gateway", "External payment processor")
+Container_Boundary(c1, "Online Shop") {
+Container(web, "Web App", "React", "Provides the shop UI")
+Container(api, "API Server", "Node.js", "Handles business logic")
+ContainerDb(db, "Database", "PostgreSQL", "Stores products and orders")
+}
+Rel(customer, web, "Uses", "HTTPS")
+Rel(web, api, "Calls", "JSON/HTTPS")
+Rel(api, db, "Reads/writes", "SQL")
+Rel(api, payment, "Processes payment", "HTTPS")`,
+
+        'c4-component':
+          `C4Component
+title Component diagram for API Server
+Container(web, "Web App", "React", "The shop frontend")
+ContainerDb(db, "Database", "PostgreSQL", "Stores data")
+Container_Boundary(api, "API Server") {
+Component(auth, "Auth Controller", "Express", "Handles login and sessions")
+Component(catalog, "Catalog Controller", "Express", "Manages product listings")
+Component(orders, "Order Controller", "Express", "Processes orders")
+}
+Rel(web, auth, "Authenticates via", "JSON/HTTPS")
+Rel(web, catalog, "Fetches products from", "JSON/HTTPS")
+Rel(web, orders, "Places orders via", "JSON/HTTPS")
+Rel(auth, db, "Reads users from", "SQL")
+Rel(catalog, db, "Reads products from", "SQL")
+Rel(orders, db, "Writes orders to", "SQL")`,
+
+        'c4-dynamic':
+          `C4Dynamic
+title Dynamic diagram for Login Flow
+ContainerDb(db, "Database", "PostgreSQL", "Stores user credentials")
+Container(web, "Web App", "React", "The shop frontend")
+Container_Boundary(api, "API Server") {
+Component(auth, "Auth Controller", "Express", "Handles login")
+Component(security, "Security Service", "Node.js", "Validates credentials")
+}
+Rel(web, auth, "POST /login", "JSON/HTTPS")
+Rel(auth, security, "validateUser()")
+Rel(security, db, "SELECT * FROM users WHERE email = ?", "SQL")`,
+
+        'c4-deployment':
+          `C4Deployment
+title Deployment diagram for Online Shop
+Deployment_Node(cloud, "AWS Cloud", "Amazon Web Services") {
+Deployment_Node(web_tier, "Web Tier", "EC2 Auto Scaling") {
+Container(web, "Web App", "React", "Serves the frontend")
+}
+Deployment_Node(app_tier, "App Tier", "EC2 Auto Scaling") {
+Container(api, "API Server", "Node.js", "Handles requests")
+}
+Deployment_Node(db_tier, "Database Tier", "RDS") {
+ContainerDb(db, "Database", "PostgreSQL", "Stores all data")
+}
+}
+Rel(web, api, "Makes API calls", "HTTPS")
+Rel(api, db, "Reads and writes", "SQL")`,
+
+        /* MINDMAP */
+        'mindmap-basic':
+          `mindmap
+  root((Mindmap))
+    Origins
+      Long history
+      Popularisation
+    Research
+      On effectiveness
+      On Automatic creation
+    Uses
+      Creative techniques
+      Strategic planning
+      Argument mapping
+    Tools
+      Pen and paper
+      Mermaid`,
+
+        'mindmap-shapes':
+          `mindmap
+  root((Circle root))
+    Square node
+      id1[I am a square]
+      id2[Another square]
+    Rounded node
+      id3(Rounded square)
+      id4(Another rounded)
+    Cloud node
+      id5)A cloud(
+    Bang node
+      id6))A bang((
+    Hexagon node
+      id7{{A hexagon}}`,
+
+        'mindmap-project':
+          `mindmap
+  root((Project))
+    Planning
+      Define scope
+      Set timeline
+      Allocate budget
+    Design
+      Wireframes
+      Mockups
+      User testing
+    Development
+      Frontend
+      Backend
+      Database
+    Launch
+      QA testing
+      Deployment
+      Monitoring`,
+
+        'mindmap-study':
+          `mindmap
+  root((Web Dev))
+    HTML
+      Structure
+      Semantic tags
+      Forms
+    CSS
+      Selectors
+      Flexbox
+      Grid
+      Animations
+    JavaScript
+      Variables
+      Functions
+      DOM manipulation
+      Async and Await
+    Frameworks
+      React
+      Vue
+      Angular`,
+
+        /* TIMELINE */
+        'timeline-basic':
+          `timeline
+title History of Social Media Platform
+2002 : LinkedIn
+2004 : Facebook
+2005 : YouTube
+2006 : Twitter
+2007 : Tumblr
+2008 : Instagram
+2010 : Pinterest`,
+
+        'timeline-multi-event':
+          `timeline
+title Key Events in AI History
+1950 : Turing Test proposed
+1956 : Dartmouth Conference : Term AI coined
+1997 : Deep Blue beats Kasparov
+2012 : AlexNet wins ImageNet
+2016 : AlphaGo beats Lee Sedol : DeepMind breakthrough
+2022 : ChatGPT released : Generative AI goes mainstream
+2023 : GPT-4 launched : Multimodal AI emerges`,
+
+        'timeline-sections':
+          `timeline
+title Timeline of Industrial Revolution
+section 17th-20th century
+Industry 1.0 : Machinery : Water power : Steam power
+Industry 2.0 : Electricity : Internal combustion engine : Mass production
+Industry 3.0 : Electronics : Computers : Automation
+section 21st century
+Industry 4.0 : Internet : Robotics : Internet of Things
+Industry 5.0 : Artificial intelligence : Big data : 3D printing`,
+
+        'timeline-project':
+          `timeline
+title Product Launch Roadmap 2025
+section Q1
+January : Kickoff meeting : Team onboarding
+February : Requirements gathering : Design sprint
+March : Prototype ready : Stakeholder review
+section Q2
+April : Development phase 1
+May : Development phase 2 : QA testing begins
+June : Beta release : User testing
+section Q3
+July : Bug fixes : Performance tuning
+August : Final QA : Documentation complete
+September : Public launch : Marketing campaign`,
+
+        /* ZENUML */
+        'zen-basic':
+          `zenuml
+title Basic Messages
+// Async message (arrow)
+Alice->Bob: Hello Bob, how are you?
+// Sync message (method call)
+Bob.reply() {
+  return "Feeling great!"
+}
+Alice->Bob: See you later!`,
+
+        'zen-nesting':
+          `zenuml
+title Nested Calls
+Client->API.handleRequest() {
+  API->AuthService.verify() {
+    return token
+  }
+  API->Database.query() {
+    return data
+  }
+  return response
+}`,
+
+        'zen-conditions':
+          `zenuml
+title Login Flow
+Client->AuthService: login(username, password)
+if(credentials_valid) {
+  AuthService->TokenService.generate() {
+    return token
+  }
+  AuthService->Client: 200 OK with token
+} else {
+  AuthService->Client: 401 Unauthorized
+}`,
+
+        'zen-loop':
+          `zenuml
+title Retry Pattern
+Client->API: fetchData()
+while(retries > 0) {
+  API->Database: query()
+  if(success) {
+    return data
+  } else {
+    API->API: retries--
+  }
+}
+API->Client: response`,
+
+        'zen-trycatch':
+          `zenuml
+title Payment Processing
+try {
+  Consumer->API: submitPayment()
+  API->PaymentGateway: chargeCard()
+  PaymentGateway->API: 200 OK
+  API->Consumer: paymentConfirmed()
+} catch {
+  PaymentGateway->API: error
+  API->Consumer: paymentFailed()
+} finally {
+  API->AuditLog: logTransaction()
+}`,
+
+        /* SANKEY */
+        'sankey-basic':
+          `sankey
+%% source,target,value
+Electricity grid,Over generation / exports,104.453
+Electricity grid,Heating and cooling - homes,113.726
+Electricity grid,H2 conversion,27.14`,
+
+        'sankey-energy':
+          `sankey
+%% source,target,value
+Coal,Thermal generation,75.571
+Gas,Thermal generation,151.891
+Nuclear,Thermal generation,839.978
+Wind,Electricity grid,289.366
+Solar PV,Electricity grid,59.901
+Hydro,Electricity grid,6.995
+Thermal generation,Electricity grid,525.531
+Thermal generation,Losses,787.129
+Electricity grid,Industry,342.165
+Electricity grid,Heating and cooling - homes,113.726
+Electricity grid,Road transport,37.797
+Electricity grid,Losses,56.691`,
+
+        'sankey-budget':
+          `sankey
+%% source,target,value
+Revenue,Operations,400
+Revenue,Marketing,150
+Revenue,Research,100
+Revenue,Administration,80
+Revenue,Savings,70
+Operations,Salaries,250
+Operations,Infrastructure,100
+Operations,Supplies,50
+Marketing,Digital ads,90
+Marketing,Events,60
+Research,Product dev,70
+Research,Innovation,30`,
+
+        /* XYCHART */
+        'xy-bar':
+          `xychart
+title "Monthly Sales"
+x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+y-axis "Revenue (in $)" 4000 --> 11000
+bar [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]`,
+
+        'xy-line':
+          `xychart
+title "Website Traffic"
+x-axis [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+y-axis "Visitors" 0 --> 5000
+line [1200, 1800, 2400, 2100, 3200, 4800, 4200]`,
+
+        'xy-bar-line':
+          `xychart
+title "Sales Revenue"
+x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+y-axis "Revenue (in $)" 4000 --> 11000
+bar [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]`,
+
+        'xy-horizontal':
+          `xychart horizontal
+title "Product Performance"
+x-axis [ProductA, ProductB, ProductC, ProductD, ProductE]
+y-axis "Units Sold" 0 --> 500
+bar [120, 340, 210, 450, 280]
+line [120, 340, 210, 450, 280]`,
+
+        /* BLOCK DIAGRAM */
+        'block-basic':
+          `block
+columns 3
+A B C
+D["Wide block"]:2 E`,
+
+        'block-shapes':
+          `block
+columns 3
+rect["Rectangle"]
+round("Round edges")
+stadium(["Stadium"])
+space
+cylinder[("Database")]
+circle(("Circle"))
+space
+diamond{"Decision"}
+hexagon{{"Hexagon"}}
+space
+asymm>"Asymmetric"]
+dblcirc((("Double circle")))`,
+
+        'block-nested':
+          `block
+columns 1
+db(("DB"))
+arrow<[" "]>(down)
+block:mid
+  columns 3
+  A
+  B["Wide block"]
+  C
+end
+space
+D
+mid --> D
+C --> D
+style B fill:#969,stroke:#333,stroke-width:4px`,
+
+        'block-arch':
+          `block
+columns 3
+Frontend blockArrowId<[" "]>(right) Backend
+space:2 down<[" "]>(down)
+Disk left<[" "]>(left) Database[("Database")]
+classDef front fill:#696,stroke:#333;
+classDef back fill:#969,stroke:#333;
+class Frontend front
+class Backend,Database back`,
+
+        /* PACKET DIAGRAM */
+        'packet-basic':
+          `packet
+title Simple Packet
++8: "Version"
++8: "Type"
++16: "Length"
++32: "Identifier"
++32: "Data"`,
+
+        'packet-tcp':
+          `packet
+title TCP Packet
+0-15: "Source Port"
+16-31: "Destination Port"
+32-63: "Sequence Number"
+64-95: "Acknowledgment Number"
+96-99: "Data Offset"
+100-105: "Reserved"
+106: "URG"
+107: "ACK"
+108: "PSH"
+109: "RST"
+110: "SYN"
+111: "FIN"
+112-127: "Window"
+128-143: "Checksum"
+144-159: "Urgent Pointer"
+160-191: "(Options and Padding)"
+192-255: "Data (variable length)"`,
+
+        'packet-udp':
+          `packet
+title UDP Packet
++16: "Source Port"
++16: "Destination Port"
++16: "Length"
++16: "Checksum"
+64-95: "Data (variable length)"`,
+
+        'packet-ipv4':
+          `packet
+title IPv4 Header
+0-3: "Version"
+4-7: "IHL"
+8-15: "DSCP/ECN"
+16-31: "Total Length"
+32-47: "Identification"
+48-50: "Flags"
+51-63: "Fragment Offset"
+64-71: "TTL"
+72-79: "Protocol"
+80-95: "Header Checksum"
+96-127: "Source IP Address"
+128-159: "Destination IP Address"
+160-191: "Options (if IHL > 5)"`,
+
+        /* KANBAN DIAGRAM */
+        'kanban-basic':
+          `kanban
+todo[Todo]
+task1[Design landing page]
+task2[Write unit tests]
+inprogress[In Progress]
+task3[Build API endpoints]
+task4[Review pull requests]
+done[Done]
+task5[Setup CI pipeline]
+task6[Deploy to staging]`,
+
+        'kanban-metadata':
+          `kanban
+todo[Todo]
+id1[Fix login bug]@{ ticket: BUG-101, assigned: 'alice', priority: 'Very High' }
+id2[Update README]@{ assigned: 'bob', priority: 'Low' }
+inprogress[In Progress]
+id3[Refactor auth module]@{ ticket: DEV-204, assigned: 'alice', priority: 'High' }
+review[In Review]
+id4[Add dark mode]@{ ticket: DEV-198, assigned: 'carol', priority: 'Low' }
+done[Done]
+id5[Setup linter]@{ assigned: 'bob' }`,
+
+        'kanban-workflow':
+          `kanban
+backlog[Backlog]
+b1[User profile page]
+b2[Email notifications]
+b3[Export to CSV]
+todo[Todo]
+t1[Password reset flow]
+t2[Mobile responsive nav]
+inprogress[In Progress]
+p1[Search feature]@{ assigned: 'alice', priority: 'High' }
+p2[Dashboard charts]@{ assigned: 'bob', priority: 'High' }
+review[Code Review]
+r1[API rate limiting]@{ assigned: 'carol' }
+done[Done]
+d1[User authentication]
+d2[Database migrations]
+d3[Payment integration]`,
+
+        'kanban-priority':
+          `kanban
+critical[Critical]
+c1[Production outage fix]@{ priority: 'Very High', assigned: 'alice' }
+c2[Security vulnerability]@{ priority: 'Very High', assigned: 'bob' }
+high[High Priority]
+h1[Performance bottleneck]@{ priority: 'High', assigned: 'carol' }
+h2[Data export broken]@{ priority: 'High', assigned: 'alice' }
+normal[Normal]
+n1[UI polish pass]@{ priority: 'Low' }
+n2[Update dependencies]@{ priority: 'Low' }
+low[Low Priority]
+l1[Refactor old tests]@{ priority: 'Very Low' }
+l2[Update docs]@{ priority: 'Very Low' }`,
+
+        /* ARCHITECTURE DIAGRAM */
+        'arch-basic':
+          `architecture-beta
+group api(cloud)[API Layer]
+service db(database)[Database] in api
+service disk1(disk)[Storage] in api
+service disk2(disk)[Storage] in api
+service server(server)[Server] in api
+db:L -- R:server
+disk1:T -- B:server
+disk2:T -- B:db`,
+
+        'arch-arrows':
+          `architecture-beta
+group vpc(cloud)[VPC]
+service internet(internet)[Internet]
+service gateway(server)[Gateway] in vpc
+service app(server)[App Server] in vpc
+service db(database)[Database] in vpc
+service storage(disk)[Storage] in vpc
+internet:R --> L:gateway
+gateway:R --> L:app
+app:R --> L:db
+app:B --> T:storage`,
+
+        'arch-junction':
+          `architecture-beta
+service left_disk(disk)[Disk A]
+service top_disk(disk)[Disk B]
+service bottom_disk(disk)[Disk C]
+service top_gateway(internet)[Gateway A]
+service bottom_gateway(internet)[Gateway B]
+junction junctionCenter
+junction junctionRight
+left_disk:R -- L:junctionCenter
+top_disk:B -- T:junctionCenter
+bottom_disk:T -- B:junctionCenter
+junctionCenter:R -- L:junctionRight
+top_gateway:B -- T:junctionRight
+bottom_gateway:T -- B:junctionRight`,
+
+        'arch-nested':
+          `architecture-beta
+group public(cloud)[Public Zone]
+group private(cloud)[Private Zone] in public
+service lb(server)[Load Balancer] in public
+service web(server)[Web Server] in private
+service api(server)[API Server] in private
+service db(database)[Database] in private
+service cache(disk)[Cache] in private
+lb:R --> L:web
+web:R --> L:api
+api:B --> T:db
+api:R --> L:cache`,
+
+        /* RADAR DIAGRAM */
+        'radar-basic':
+          `radar-beta
+axis A, B, C, D, E
+curve c1["Series 1"]{1, 2, 3, 4, 5}
+curve c2["Series 2"]{5, 4, 3, 2, 1}
+curve c3["Series 3"]{3, 3, 3, 3, 3}
+max 5
+min 0`,
+
+        'radar-grades':
+          `radar-beta
+title Grades Comparison
+axis m["Math"], s["Science"], e["English"]
+axis h["History"], g["Geography"], a["Art"]
+curve alice["Alice"]{85, 90, 80, 70, 75, 90}
+curve bob["Bob"]{70, 75, 85, 80, 90, 85}
+max 100
+min 0`,
+
+        'radar-polygon':
+          `radar-beta
+title Restaurant Comparison
+axis food["Food Quality"], service["Service"], price["Price"]
+axis ambiance["Ambiance"]
+curve a["Restaurant A"]{4, 3, 2, 4}
+curve b["Restaurant B"]{3, 4, 3, 3}
+curve c["Restaurant C"]{2, 3, 4, 2}
+curve d["Restaurant D"]{2, 2, 4, 3}
+graticule polygon
+max 5`,
+
+        'radar-skills':
+          `radar-beta
+title Team Skills Matrix
+axis js["JavaScript"], py["Python"], ux["UX Design"]
+axis db["Databases"], cloud["Cloud"], sec["Security"]
+curve dev["Dev Team"]{90, 70, 60, 80, 75, 65}
+curve ops["Ops Team"]{50, 80, 40, 85, 95, 90}
+curve design["Design Team"]{60, 40, 95, 50, 55, 45}
+max 100
+min 0
+ticks 4`,
+
+        /* TREEMAP DIAGRAM */
+        'treemap-basic':
+          `treemap-beta
+"Category A"
+  "Item A1": 10
+  "Item A2": 20
+  "Item A3": 15
+"Category B"
+  "Item B1": 25
+  "Item B2": 30
+"Category C"
+  "Item C1": 18
+  "Item C2": 12`,
+
+        'treemap-hierarchical':
+          `treemap-beta
+"Products"
+  "Electronics"
+    "Phones": 50
+    "Computers": 30
+    "Accessories": 20
+  "Clothing"
+    "Men's": 40
+    "Women's": 40
+  "Home & Garden"
+    "Furniture": 35
+    "Tools": 25`,
+
+        'treemap-budget':
+          `treemap-beta
+"Annual Budget"
+  "Engineering"
+    "Salaries": 500000
+    "Equipment": 80000
+    "Training": 30000
+  "Marketing"
+    "Advertising": 200000
+    "Events": 60000
+  "Operations"
+    "Infrastructure": 150000
+    "Supplies": 40000`,
+
+        'treemap-org':
+          `treemap-beta
+"Company"
+  "Engineering"
+    "Frontend": 12
+    "Backend": 15
+    "DevOps": 6
+    "QA": 8
+  "Product"
+    "Design": 7
+    "Management": 5
+  "Business"
+    "Sales": 20
+    "Marketing": 10
+    "Support": 14`,
+
+        /* VENN DIAGRAM */
+        'venn-basic':
+          `venn-beta
+title "Team Overlap"
+set Frontend
+set Backend
+union Frontend,Backend["Shared APIs"]`,
+
+        'venn-triple':
+          `venn-beta
+title "Skill Sets"
+set A["Python"]
+set B["JavaScript"]
+set C["SQL"]
+union A,B["Full Stack"]
+union B,C["Web + Data"]
+union A,C["Data Science"]
+union A,B,C["All Skills"]`,
+
+        'venn-text':
+          `venn-beta
+title "Tech Stack"
+set A["Frontend"]
+set B["Backend"]
+set C["DevOps"]
+union A,B["Full Stack"]
+union B,C["Cloud APIs"]
+union A,C["CI/CD"]
+union A,B,C["Platform"]`,
+
+        'venn-sized':
+          `venn-beta
+title "Market Share"
+set A["Product A"]:30
+set B["Product B"]:20
+set C["Product C"]:10
+union A,B["A & B"]:8
+union B,C["B & C"]:4
+union A,C["A & C"]:3
+union A,B,C["All"]:2`,
+      };
+
+      const TYPE_LABELS = { flowchart: 'Flowchart', sequence: 'Sequence', class: 'Class Diagram', state: 'State Diagram', er: 'ER Diagram', journey: 'User Journey', gantt: 'Gantt', pie: 'Pie Chart', quadrant: 'Quadrant Chart', gitgraph: 'Git Graph', c4: 'C4 Diagram', mindmap: 'Mindmap', timeline: 'Timeline', zenuml: 'ZenUML', sankey: 'Sankey', xychart: 'XY Chart', block: 'Block Diagram', packet: 'Packet Diagram', kanban: 'Kanban', architecture: 'Architecture', radar: 'Radar Chart', treemap: 'Treemap', venn: 'Venn Diagram' };
+      const TYPE_DEFAULT = { flowchart: 'flowchart-basic', sequence: 'seq-basic', class: 'class-basic', state: 'state-basic', er: 'er-basic', journey: 'journey-basic', gantt: 'gantt-basic', pie: 'pie-basic', quadrant: 'quadrant-basic', gitgraph: 'git-basic', c4: 'c4-context', mindmap: 'mindmap-basic', timeline: 'timeline-basic', zenuml: 'zen-basic', sankey: 'sankey-basic', xychart: 'xy-bar', block: 'block-basic', packet: 'packet-basic', kanban: 'kanban-basic', architecture: 'arch-basic', radar: 'radar-basic', treemap: 'treemap-basic', venn: 'venn-basic' };
+
+      /* ═══════════════════════════════════════
+         STATE
+      ═══════════════════════════════════════ */
+      let isFullWindow = false, isSidebarOpen = true, isDark = true;
+      let renderTimer = null, currentType = 'flowchart';
+      let tx = 0, ty = 0, scale = 1;
+      const MIN_SCALE = 0.5, MAX_SCALE = 5, ZOOM_SPEED = 1.2;
+      let isPanning = false, panStartX = 0, panStartY = 0, panOriginTx = 0, panOriginTy = 0;
+      let spaceHeld = false, middleDown = false;
+      let isDivDragging = false, divStartX = 0, divStartW = 400;
+      let renderId = 0;
+
+      // Touch/Gesture State
+      let isTouchPanning = false;
+      let initialPinchDistance = null;
+      let initialScale = 1;
+      let touchStartX = 0, touchStartY = 0;
+
+      /* ═══════════════════════════════════════
+         ELEMENTS
+      ═══════════════════════════════════════ */
+      const editor = document.getElementById('editor');
+      const edPanel = document.getElementById('editorPanel');
+      const divider = document.getElementById('divider');
+      const viewport = document.getElementById('viewport');
+      const canvas = document.getElementById('canvas');
+      const diagOut = document.getElementById('diagram-output');
+      const zoomBadge = document.getElementById('zoomBadge');
+      const statusDot = document.getElementById('statusDot');
+      const statusLbl = document.getElementById('statusLabel');
+      const sidebar = document.getElementById('sidebar');
+      const typeTag = document.getElementById('typeTag');
+      const btnSB = document.getElementById('btnSidebarToggle');
+      const btnFull = document.getElementById('btnFullWindow');
+      const btnTheme = document.getElementById('btnTheme');
+      const btnReset = document.getElementById('btnReset');
+      const btnClear = document.getElementById('btnClear');
+
+      /* ═══════════════════════════════════════
+         MERMAID
+         10.9.3 render() needs a container that
+         exists in the DOM as 3rd argument.
+         We create one hidden div, append it to
+         body once, and reuse it forever.
+      ═══════════════════════════════════════ */
+      let mermaidTheme = 'dark';
+
+      function initMermaid() {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: mermaidTheme,
+          securityLevel: 'loose',
+          fontFamily: 'JetBrains Mono, monospace',
+          flowchart: {
+            useMaxWidth: false,
+            nodeSpacing: 60,
+            rankSpacing: 80,
+            padding: 20,
+            htmlLabels: true,
+          },
+          sequence: {
+            useMaxWidth: false,
+            actorMargin: 80,
+            messageMargin: 50,
+            boxMargin: 20,
+            noteMargin: 20,
+            mirrorActors: true,
+          },
+          gantt: {
+            useMaxWidth: false,
+            fontSize: 14,
+            barHeight: 24,
+            barGap: 6,
+            topPadding: 60,
+            rightPadding: 80,
+            leftPadding: 120,
+            gridLineStartPadding: 40,
+            numberSectionStyles: 4,
+            axisFormat: '%Y-%m-%d',
+          },
+          xyChart: { useMaxWidth: false, width: 900, height: 600 },
+          class: {
+            useMaxWidth: false,
+            nodeSpacing: 80,
+            rankSpacing: 80,
+            padding: 20,
+          },
+          state: {
+            useMaxWidth: false,
+            nodeSpacing: 60,
+            rankSpacing: 60,
+            padding: 20,
+          },
+          er: {
+            useMaxWidth: false,
+            fontSize: 14,
+            layoutDirection: 'TB',
+          },
+          journey: {
+            useMaxWidth: false,
+            sectionWidth: 200,
+            sectionHeight: 52,
+          },
+          pie: { useMaxWidth: false },
+          mindmap: { useMaxWidth: false, padding: 20 },
+          timeline: { useMaxWidth: false, padding: 20 },
+          sankey: { useMaxWidth: false },
+          packet: { useMaxWidth: false },
+          block: { useMaxWidth: false, padding: 20 },
+        });
+      }
+      initMermaid();
+
+      let isRendering = false;
+
+      async function render() {
+        const code = editor.value.trim();
+        if (!code) {
+          diagOut.innerHTML = '<div class="empty-hint"><div class="icon">◈</div><p>Diagram akan muncul di sini<br>setelah Anda mulai mengetik.</p></div>';
+          setStatus('ready', false);
+          return;
+        }
+        setStatus('rendering…', false);
+        const id = 'mmd' + (++renderId);
+        try {
+          // Re-initialize mermaid to reset parser state between diagram types
+          initMermaid();
+          diagOut.innerHTML = '';
+          // Flag to prevent MutationObserver from removing Mermaid's temporary
+          // SVG elements in body during text measurement.
+          isRendering = true;
+          // Use a temporary wide off-screen container for rendering so Mermaid
+          // calculates chart layout at a generous width (prevents label overlap).
+          const tmpContainer = document.createElement('div');
+          tmpContainer.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1500px;height:1000px;';
+          document.body.appendChild(tmpContainer);
+          const { svg } = await mermaid.render(id, code, tmpContainer);
+          tmpContainer.remove();
+          isRendering = false;
+          diagOut.innerHTML = svg;
+          const svgEl = diagOut.querySelector('svg');
+          if (svgEl) {
+            const isZenUML = code.trim().toLowerCase().startsWith('zenuml');
+            if (isZenUML) {
+              // ZenUML uses foreignObject inside SVG with hardcoded dimensions
+              // that are often too narrow. We need to measure the actual HTML
+              // content size and patch the SVG/foreignObject accordingly.
+              svgEl.style.background = 'transparent';
+              svgEl.style.overflow = 'visible';
+              svgEl.style.maxWidth = 'none';
+              // Use rAF to let the browser lay out foreignObject HTML content
+              requestAnimationFrame(() => {
+                const fo = svgEl.querySelector('foreignObject');
+                if (fo) {
+                  const inner = fo.firstElementChild;
+                  if (inner) {
+                    // Measure the actual content size
+                    const actualW = inner.scrollWidth;
+                    const actualH = inner.scrollHeight;
+                    // Add padding for safety
+                    const w = actualW + 20;
+                    const h = actualH + 20;
+                    // Patch foreignObject dimensions
+                    fo.setAttribute('width', w);
+                    fo.setAttribute('height', h);
+                    // Patch the SVG element dimensions
+                    svgEl.setAttribute('width', w);
+                    svgEl.setAttribute('height', h);
+                    svgEl.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                    svgEl.style.width = w + 'px';
+                    svgEl.style.height = h + 'px';
+                    svgEl.style.maxWidth = 'none';
+                  }
+                }
+              });
+            } else {
+              svgEl.removeAttribute('style');
+              svgEl.style.cssText = 'background:transparent;height:auto;';
+            }
+          }
+          setStatus('ok', false);
+          // Clean up any leftover Mermaid elements from body after render
+          cleanupMermaidElements();
+        } catch (err) {
+          isRendering = false;
+          // Remove any stray element Mermaid may have inserted into body or diagOut
+          const stray = document.getElementById(id);
+          if (stray) stray.remove();
+          cleanupMermaidElements();
+          diagOut.innerHTML = '<div class="error-message">⚠ Parse Error\n\n' + (err.message || String(err)) + '</div>';
+          setStatus('error', true);
+        }
+      }
+
+      // Clean up stray SVGs/divs Mermaid leaves in body after rendering
+      function cleanupMermaidElements() {
+        document.querySelectorAll('body > svg').forEach(el => el.remove());
+        document.querySelectorAll('body > div').forEach(el => {
+          if (el !== document.querySelector('.body-wrap')
+            && el.tagName !== 'HEADER'
+            && !el.closest('.body-wrap')
+            && el.id !== 'exportModal') {
+            el.remove();
+          }
+        });
+      }
+
+      function setStatus(t, isErr) {
+        statusLbl.textContent = t;
+        statusDot.className = 'status-dot' + (isErr ? ' error' : '');
+      }
+
+      editor.addEventListener('input', () => {
+        // Fix smart punctuation (macOS/iOS auto-correct)
+        const v = editor.value;
+        const fixed = v
+          .replace(/\u2014/g, '--')       // em-dash → --
+          .replace(/\u2013/g, '-')        // en-dash → -
+          .replace(/\u00BB/g, '>>')       // » → >>
+          .replace(/\u00AB/g, '<<')       // « → <<
+          .replace(/\u2018|\u2019/g, "'") // smart single quotes
+          .replace(/\u201C|\u201D/g, '"');// smart double quotes
+        if (fixed !== v) {
+          const pos = editor.selectionStart;
+          editor.value = fixed;
+          editor.selectionStart = editor.selectionEnd = pos;
+        }
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(render, 300);
+      });
+
+      /* ═══════════════════════════════════════
+         SUPPRESS MERMAID BODY INJECTIONS
+         v10 sometimes inserts elements into body.
+         Remove anything injected that isn't ours.
+      ═══════════════════════════════════════ */
+      new MutationObserver(mutations => {
+        // Skip cleanup while Mermaid is actively rendering — it creates
+        // temporary SVG elements in body for text measurement.
+        if (isRendering) return;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1 || node.parentElement !== document.body) continue;
+            if (node.id === 'exportModal') continue;
+            const tag = node.tagName.toLowerCase();
+            if (tag === 'svg' || (tag === 'div' && !node.classList.contains('body-wrap'))) {
+              node.remove();
+            }
+          }
+        }
+      }).observe(document.body, { childList: true });
+
+      /* ═══════════════════════════════════════
+         SIDEBAR
+      ═══════════════════════════════════════ */
+      function switchType(type) {
+        document.querySelectorAll('.dtype-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('dtype-' + type).classList.add('active');
+        document.querySelectorAll('.tpl-list').forEach(el => el.classList.remove('visible'));
+        document.getElementById('tpl-' + type).classList.add('visible');
+        currentType = type;
+        typeTag.textContent = TYPE_LABELS[type];
+        loadTemplate(TYPE_DEFAULT[type]);
+      }
+
+      function loadTemplate(key) {
+        if (!T[key]) return;
+        editor.value = T[key];
+        resetView();
+        clearTimeout(renderTimer);
+        render();
+      }
+
+      document.querySelectorAll('.dtype-btn').forEach(btn =>
+        btn.addEventListener('click', () => switchType(btn.dataset.type))
+      );
+      document.querySelectorAll('.tpl-btn').forEach(btn =>
+        btn.addEventListener('click', () => loadTemplate(btn.dataset.tpl))
+      );
+
+      btnSB.addEventListener('click', () => {
+        isSidebarOpen = !isSidebarOpen;
+        sidebar.classList.toggle('collapsed', !isSidebarOpen);
+        btnSB.classList.toggle('active', isSidebarOpen);
+      });
+
+      /* ═══════════════════════════════════════
+         PAN / ZOOM
+      ═══════════════════════════════════════ */
+      function applyTransform() {
+        canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+        const pct = Math.round(scale * 100);
+        zoomBadge.textContent = pct + '%';
+        zoomSlider.value = pct;
+      }
+      function resetView() { 
+        tx = 0; ty = 0; scale = 1; 
+        canvas.classList.add('smooth-transform');
+        applyTransform(); 
+        setTimeout(() => canvas.classList.remove('smooth-transform'), 350);
+      }
+      btnReset.addEventListener('click', resetView);
+
+      /* Zoom slider sync */
+      const zoomSlider = document.getElementById('zoomSlider');
+      const btnZoomIn = document.getElementById('btnZoomIn');
+      const btnZoomOut = document.getElementById('btnZoomOut');
+
+      zoomSlider.addEventListener('input', () => {
+        const ns = Math.min(MAX_SCALE, Math.max(MIN_SCALE, zoomSlider.value / 100));
+        const r = viewport.getBoundingClientRect();
+        const cx = r.width / 2, cy = r.height / 2;
+        const ratio = ns / scale;
+        tx = cx - ratio * (cx - tx);
+        ty = cy - ratio * (cy - ty);
+        scale = ns;
+        canvas.classList.remove('smooth-transform');
+        applyTransform();
+      });
+
+      btnZoomIn.addEventListener('click', () => {
+        const ns = Math.min(MAX_SCALE, scale * 1.2);
+        const r = viewport.getBoundingClientRect();
+        const cx = r.width / 2, cy = r.height / 2;
+        const ratio = ns / scale;
+        tx = cx - ratio * (cx - tx);
+        ty = cy - ratio * (cy - ty);
+        scale = ns;
+        canvas.classList.add('smooth-transform');
+        applyTransform();
+        setTimeout(() => canvas.classList.remove('smooth-transform'), 350);
+      });
+
+      btnZoomOut.addEventListener('click', () => {
+        const ns = Math.max(MIN_SCALE, scale / 1.2);
+        const r = viewport.getBoundingClientRect();
+        const cx = r.width / 2, cy = r.height / 2;
+        const ratio = ns / scale;
+        tx = cx - ratio * (cx - tx);
+        ty = cy - ratio * (cy - ty);
+        scale = ns;
+        canvas.classList.add('smooth-transform');
+        applyTransform();
+        setTimeout(() => canvas.classList.remove('smooth-transform'), 350);
+      });
+
+      viewport.addEventListener('wheel', e => {
+        e.preventDefault();
+        canvas.classList.remove('smooth-transform');
+        const r = viewport.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        
+        if (e.ctrlKey) {
+          // Pinch-to-zoom on trackpad
+          const f = Math.exp(-e.deltaY * 0.01);
+          const ns = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * f));
+          const ratio = ns / scale;
+          tx = mx - ratio * (mx - tx);
+          ty = my - ratio * (my - ty);
+          scale = ns;
+        } else {
+          // Trackpad two-finger scroll or regular mouse wheel pan
+          if (e.shiftKey) {
+             tx -= e.deltaY * 1.5;
+             ty -= e.deltaX * 1.5;
+          } else {
+             tx -= e.deltaX * 1.5;
+             ty -= e.deltaY * 1.5;
+          }
+        }
+        applyTransform();
+      }, { passive: false });
+
+      // --- Touch Gestures ---
+      viewport.addEventListener('touchstart', e => {
+        canvas.classList.remove('smooth-transform');
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          isTouchPanning = true;
+          viewport.classList.add('panning');
+          
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          touchStartX = (t1.clientX + t2.clientX) / 2;
+          touchStartY = (t1.clientY + t2.clientY) / 2;
+          panOriginTx = tx;
+          panOriginTy = ty;
+
+          initialPinchDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+          initialScale = scale;
+        }
+      }, { passive: false });
+
+      viewport.addEventListener('touchmove', e => {
+        if (isTouchPanning && e.touches.length === 2) {
+          e.preventDefault();
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          const mx = (t1.clientX + t2.clientX) / 2;
+          const my = (t1.clientY + t2.clientY) / 2;
+          const currentDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+          
+          // Determine if pinching or just dragging
+          if (initialPinchDistance && Math.abs(currentDistance - initialPinchDistance) > 10) {
+            const ratioChange = currentDistance / initialPinchDistance;
+            const ns = Math.min(MAX_SCALE, Math.max(MIN_SCALE, initialScale * ratioChange));
+            
+            const r = viewport.getBoundingClientRect();
+            const viewportMx = mx - r.left;
+            const viewportMy = my - r.top;
+            
+            // Pan relative to mid-point drag
+            const currentPanX = panOriginTx + (mx - touchStartX);
+            const currentPanY = panOriginTy + (my - touchStartY);
+            
+            // Apply zoom
+            const ratio = ns / initialScale;
+            tx = viewportMx - ratio * (viewportMx - currentPanX);
+            ty = viewportMy - ratio * (viewportMy - currentPanY);
+            scale = ns;
+          } else {
+            // Pan only
+            tx = panOriginTx + (mx - touchStartX);
+            ty = panOriginTy + (my - touchStartY);
+          }
+          applyTransform();
+        }
+      }, { passive: false });
+
+      const endTouchGesture = () => {
+        isTouchPanning = false;
+        initialPinchDistance = null;
+        viewport.classList.remove('panning');
+      };
+      viewport.addEventListener('touchend', e => { if (e.touches.length < 2) endTouchGesture(); });
+      viewport.addEventListener('touchcancel', endTouchGesture);
+
+      function startPan(x, y) {
+        isPanning = true; panStartX = x; panStartY = y; panOriginTx = tx; panOriginTy = ty;
+        viewport.classList.add('panning');
+      }
+      function movePan(x, y) {
+        if (!isPanning) return;
+        tx = panOriginTx + (x - panStartX); ty = panOriginTy + (y - panStartY);
+        applyTransform();
+      }
+      function endPan() { isPanning = false; viewport.classList.remove('panning'); updateCursor(); }
+      function updateCursor() { viewport.classList.toggle('space-held', spaceHeld && !isPanning); }
+
+      window.addEventListener('keydown', e => {
+        if (e.code === 'Space' && document.activeElement !== editor) { e.preventDefault(); spaceHeld = true; updateCursor(); }
+      });
+      window.addEventListener('keyup', e => {
+        if (e.code === 'Space') { spaceHeld = false; if (!middleDown) endPan(); updateCursor(); }
+      });
+      viewport.addEventListener('mousedown', e => {
+        if (e.button === 0 && spaceHeld) { e.preventDefault(); startPan(e.clientX, e.clientY); }
+        if (e.button === 1) { e.preventDefault(); middleDown = true; startPan(e.clientX, e.clientY); }
+      });
+      window.addEventListener('mousemove', e => { if (isPanning) movePan(e.clientX, e.clientY); });
+      window.addEventListener('mouseup', e => {
+        if (e.button === 1) middleDown = false;
+        if (isPanning && !spaceHeld && !middleDown) endPan();
+        if (isPanning && e.button === 0 && !middleDown) endPan();
+      });
+      viewport.addEventListener('contextmenu', e => { if (middleDown) e.preventDefault(); });
+
+      /* ═══════════════════════════════════════
+         FULL WINDOW
+      ═══════════════════════════════════════ */
+      btnFull.addEventListener('click', () => {
+        isFullWindow = !isFullWindow;
+        edPanel.classList.toggle('hidden', isFullWindow);
+        divider.style.display = isFullWindow ? 'none' : '';
+        btnFull.innerHTML = isFullWindow ? '▣ Exit Full Window' : '⬜ Full Window';
+        btnFull.classList.toggle('active', isFullWindow);
+      });
+
+      /* ═══════════════════════════════════════
+         THEME
+      ═══════════════════════════════════════ */
+      function applyTheme() {
+        document.body.removeAttribute('data-theme');
+        if (!isDark) document.body.setAttribute('data-theme', 'light');
+        btnTheme.textContent = isDark ? '☀' : '☾';
+        mermaidTheme = isDark ? 'dark' : 'default';
+        initMermaid();
+        render();
+      }
+      btnTheme.addEventListener('click', () => { isDark = !isDark; applyTheme(); });
+
+      /* ═══════════════════════════════════════
+         CLEAR
+      ═══════════════════════════════════════ */
+      btnClear.addEventListener('click', () => { editor.value = ''; render(); resetView(); });
+
+      /* ═══════════════════════════════════════
+         DIVIDER DRAG
+      ═══════════════════════════════════════ */
+      divider.addEventListener('mousedown', e => {
+        isDivDragging = true; divStartX = e.clientX;
+        divStartW = edPanel.offsetWidth;
+        divider.classList.add('dragging'); e.preventDefault();
+      });
+      window.addEventListener('mousemove', e => {
+        if (!isDivDragging) return;
+        const w = Math.max(200, Math.min(700, divStartW + e.clientX - divStartX));
+        edPanel.style.width = w + 'px';
+      });
+      window.addEventListener('mouseup', () => {
+        if (isDivDragging) { isDivDragging = false; divider.classList.remove('dragging'); }
+      });
+
+      /* ═══════════════════════════════════════
+         EXPORT PANEL
+      ═══════════════════════════════════════ */
+      const btnExport = document.getElementById('btnExport');
+      const exportModal = document.getElementById('exportModal');
+      const btnCloseExport = document.getElementById('btnCloseExport');
+      const btnCancelExport = document.getElementById('btnCancelExport');
+      const btnConfirmExport = document.getElementById('btnConfirmExport');
+      const expFormat = document.getElementById('expFormat');
+      const expSize = document.getElementById('expSize');
+      const groupOrientation = document.getElementById('groupOrientation');
+      const groupMargin = document.getElementById('groupMargin');
+      const expMargin = document.getElementById('expMargin');
+
+      function toggleExportSettings() {
+        // Only show orientation and margin if a specific paper size is selected
+        const isFit = expSize.value === 'fit';
+        groupOrientation.style.display = isFit ? 'none' : 'flex';
+        groupMargin.style.display = isFit ? 'none' : 'flex';
+      }
+
+      expSize.addEventListener('change', toggleExportSettings);
+
+      function openExportModal() {
+        if (!diagOut.querySelector('svg')) {
+          alert("Silakan buat diagram terlebih dahulu sebelum di-export.");
+          return;
+        }
+        exportModal.classList.add('active');
+      }
+
+      function closeExportModal() {
+        exportModal.classList.remove('active');
+      }
+
+      btnExport.addEventListener('click', openExportModal);
+      btnCloseExport.addEventListener('click', closeExportModal);
+      btnCancelExport.addEventListener('click', closeExportModal);
+      exportModal.addEventListener('click', e => {
+        if (e.target === exportModal) closeExportModal();
+      });
+
+      // ── Export Helpers ──
+      // Inline all computed styles into SVG elements so the exported
+      // image is self-contained and doesn't reference external CSS.
+      function inlineStyles(srcEl, destEl) {
+        const srcChildren = srcEl.children;
+        const destChildren = destEl.children;
+        for (let i = 0; i < srcChildren.length; i++) {
+          const src = srcChildren[i];
+          const dest = destChildren[i];
+          if (!dest) continue;
+          if (src instanceof HTMLElement || src instanceof SVGElement) {
+            const computed = window.getComputedStyle(src);
+            // Only inline visually-relevant properties to keep size manageable
+            const props = [
+              'font-family', 'font-size', 'font-weight', 'font-style',
+              'fill', 'stroke', 'stroke-width', 'stroke-dasharray',
+              'opacity', 'color', 'text-anchor', 'dominant-baseline',
+              'visibility', 'display', 'overflow',
+              'background', 'background-color',
+              'border', 'border-radius', 'padding', 'margin',
+              'line-height', 'letter-spacing', 'text-decoration',
+              'white-space', 'word-break', 'box-sizing',
+              'width', 'height', 'max-width', 'max-height',
+              'min-width', 'min-height',
+              'position', 'top', 'left', 'right', 'bottom',
+              'flex', 'flex-direction', 'align-items', 'justify-content',
+              'gap', 'text-align', 'vertical-align',
+            ];
+            let styleStr = '';
+            for (const p of props) {
+              const v = computed.getPropertyValue(p);
+              if (v && v !== '' && v !== 'none' && v !== 'normal' && v !== 'auto') {
+                styleStr += `${p}:${v};`;
+              }
+            }
+            if (styleStr) {
+              dest.setAttribute('style', (dest.getAttribute('style') || '') + styleStr);
+            }
+          }
+          // Recurse
+          if (src.children && src.children.length > 0) {
+            inlineStyles(src, dest);
+          }
+        }
+      }
+
+      // Convert SVG element to a PNG data URL
+      // Re-renders diagram with light theme for consistent, clean exports
+      async function svgToPngDataUrl(svgEl) {
+        // Prevent MutationObserver from removing our temp containers
+        isRendering = true;
+
+        try {
+        // ── Step 1: Re-render diagram with light (default) theme ──
+        const code = editor.value.trim();
+        if (!code) throw new Error('No diagram code to export');
+
+        // Save current mermaid theme, switch to light for export
+        const savedTheme = mermaidTheme;
+        mermaidTheme = 'default';
+        initMermaid();
+
+        // Render in a hidden off-screen container
+        const tmpContainer = document.createElement('div');
+        tmpContainer.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1500px;height:1000px;';
+        document.body.appendChild(tmpContainer);
+
+        const tmpId = 'export_' + Date.now();
+        let exportSvgHtml;
+        try {
+          const result = await mermaid.render(tmpId, code, tmpContainer);
+          exportSvgHtml = result.svg;
+        } finally {
+          tmpContainer.remove();
+          // Restore original theme immediately
+          mermaidTheme = savedTheme;
+          initMermaid();
+        }
+
+        // Parse the fresh light-theme SVG
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = exportSvgHtml;
+        const freshSvg = wrapper.querySelector('svg');
+        if (!freshSvg) throw new Error('Failed to render export SVG');
+
+        // ── Step 2: Measure dimensions ──
+        // Temporarily insert into DOM to measure (off-screen)
+        const measureDiv = document.createElement('div');
+        measureDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+        measureDiv.appendChild(freshSvg);
+        document.body.appendChild(measureDiv);
+
+        let w = freshSvg.getBoundingClientRect().width;
+        let h = freshSvg.getBoundingClientRect().height;
+
+        const attrW = parseFloat(freshSvg.getAttribute('width'));
+        const attrH = parseFloat(freshSvg.getAttribute('height'));
+        if (attrW && attrW > 0) w = attrW;
+        if (attrH && attrH > 0) h = attrH;
+
+        // Inline computed styles from the measured SVG
+        const clone = freshSvg.cloneNode(true);
+        inlineStyles(freshSvg, clone);
+
+        measureDiv.remove();
+
+        // ── Step 3: Prepare standalone SVG ──
+        clone.setAttribute('width', w);
+        clone.setAttribute('height', h);
+        if (!clone.getAttribute('viewBox')) {
+          clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        }
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+        // Force white background
+        const bgColor = '#ffffff';
+
+        // Remove any background from SVG root
+        clone.removeAttribute('style');
+        clone.style.cssText = 'background:transparent;';
+
+        // Insert white background rect as first element
+        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bgRect.setAttribute('width', '100%');
+        bgRect.setAttribute('height', '100%');
+        bgRect.setAttribute('fill', bgColor);
+        clone.insertBefore(bgRect, clone.firstChild);
+
+        // Add fallback font
+        const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+        styleEl.textContent = `* { font-family: 'JetBrains Mono', 'Segoe UI', 'Arial', monospace, sans-serif; }`;
+        clone.insertBefore(styleEl, clone.firstChild);
+
+        // Handle foreignObject xhtml namespace
+        clone.querySelectorAll('foreignObject').forEach(fo => {
+          const children = fo.children;
+          for (let i = 0; i < children.length; i++) {
+            children[i].setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+          }
+        });
+
+        // ── Step 4: Render to canvas via data URL ──
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(clone);
+        const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error('Failed to load SVG image for export'));
+          img.src = dataUrl;
+        });
+
+        const scaleFactor = 2;
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = w * scaleFactor;
+        exportCanvas.height = h * scaleFactor;
+        const ctx = exportCanvas.getContext('2d');
+
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+
+        return { pngDataUrl: exportCanvas.toDataURL('image/png', 1.0), w, h };
+
+        } finally {
+          isRendering = false;
+        }
+      }
+
+      // Export Action
+      btnConfirmExport.addEventListener('click', async () => {
+        const svgEl = diagOut.querySelector('svg');
+        if (!svgEl) return;
+
+        btnConfirmExport.textContent = 'Exporting...';
+        btnConfirmExport.disabled = true;
+
+        try {
+          const { pngDataUrl, w, h } = await svgToPngDataUrl(svgEl);
+
+          const format = expFormat.value;
+          const sizeType = expSize.value;
+          let filename = 'diagram_' + Date.now();
+
+          if (format === 'png') {
+            const a = document.createElement('a');
+            a.href = pngDataUrl;
+            a.download = filename + '.png';
+            a.click();
+          } else if (format === 'pdf') {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+              throw new Error("jsPDF library failed to load");
+            }
+
+            const { jsPDF } = window.jspdf;
+
+            if (sizeType === 'fit') {
+              const pdf = new jsPDF({
+                orientation: w > h ? 'l' : 'p',
+                unit: 'px',
+                format: [w, h]
+              });
+              pdf.addImage(pngDataUrl, 'PNG', 0, 0, w, h);
+              pdf.save(filename + '.pdf');
+            } else {
+              const oriStr = document.querySelector('input[name="expOri"]:checked').value;
+              const ori = oriStr === 'portrait' ? 'p' : 'l';
+
+              const pdf = new jsPDF({ orientation: ori, unit: 'mm', format: sizeType });
+
+              const margin = parseFloat(expMargin.value) || 0;
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const pageHeight = pdf.internal.pageSize.getHeight();
+
+              const availWidth = pageWidth - (margin * 2);
+              const availHeight = pageHeight - (margin * 2);
+
+              const imgRatio = w / h;
+              let renderWidth = availWidth;
+              let renderHeight = availWidth / imgRatio;
+
+              if (renderHeight > availHeight) {
+                renderHeight = availHeight;
+                renderWidth = renderHeight * imgRatio;
+              }
+
+              const xPos = margin + ((availWidth - renderWidth) / 2);
+              const yPos = margin + ((availHeight - renderHeight) / 2);
+
+              pdf.addImage(pngDataUrl, 'PNG', xPos, yPos, renderWidth, renderHeight);
+              pdf.save(filename + '.pdf');
+            }
+          }
+
+        } catch (err) {
+          console.error("Export error:", err);
+          alert("Gagal melakukan export: " + err.message);
+        } finally {
+          btnConfirmExport.textContent = 'Download';
+          btnConfirmExport.disabled = false;
+          closeExportModal();
+        }
+      });
+
+      /* ═══════════════════════════════════════
+         INIT
+      ═══════════════════════════════════════ */
+      loadTemplate('flowchart-basic');
+      applyTransform();
+
+    })();
+  </script>
+</body>
+
+</html>
