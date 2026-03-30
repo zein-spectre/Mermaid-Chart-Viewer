@@ -71,7 +71,3 @@ graph TD
 ## 📜 Lisensi
 
 Proyek ini dilisensikan di bawah Lisensi MIT - lihat file [LICENSE](https://www.google.com/search?q=LICENSE) untuk detailnya.
-
------
-
-Dikembangkan dengan ❤️ untuk komunitas Mermaid.js. Jika kamu menyukai alat ini, pertimbangkan untuk memberikan ⭐️ di repositori ini\!
