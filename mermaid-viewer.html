@@ -3070,10 +3070,10 @@ union A,B,C["All"]:2`,
         zoomBadge.textContent = pct + '%';
         zoomSlider.value = pct;
       }
-      function resetView() { 
-        tx = 0; ty = 0; scale = 1; 
+      function resetView() {
+        tx = 0; ty = 0; scale = 1;
         canvas.classList.add('smooth-transform');
-        applyTransform(); 
+        applyTransform();
         setTimeout(() => canvas.classList.remove('smooth-transform'), 350);
       }
       btnReset.addEventListener('click', resetView);
@@ -3126,7 +3126,7 @@ union A,B,C["All"]:2`,
         canvas.classList.remove('smooth-transform');
         const r = viewport.getBoundingClientRect();
         const mx = e.clientX - r.left, my = e.clientY - r.top;
-        
+
         if (e.ctrlKey) {
           // Pinch-to-zoom on trackpad
           const f = Math.exp(-e.deltaY * 0.01);
@@ -3138,11 +3138,11 @@ union A,B,C["All"]:2`,
         } else {
           // Trackpad two-finger scroll or regular mouse wheel pan
           if (e.shiftKey) {
-             tx -= e.deltaY * 1.5;
-             ty -= e.deltaX * 1.5;
+            tx -= e.deltaY * 1.5;
+            ty -= e.deltaX * 1.5;
           } else {
-             tx -= e.deltaX * 1.5;
-             ty -= e.deltaY * 1.5;
+            tx -= e.deltaX * 1.5;
+            ty -= e.deltaY * 1.5;
           }
         }
         applyTransform();
@@ -3155,7 +3155,7 @@ union A,B,C["All"]:2`,
           e.preventDefault();
           isTouchPanning = true;
           viewport.classList.add('panning');
-          
+
           const t1 = e.touches[0];
           const t2 = e.touches[1];
           touchStartX = (t1.clientX + t2.clientX) / 2;
@@ -3176,20 +3176,20 @@ union A,B,C["All"]:2`,
           const mx = (t1.clientX + t2.clientX) / 2;
           const my = (t1.clientY + t2.clientY) / 2;
           const currentDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-          
+
           // Determine if pinching or just dragging
           if (initialPinchDistance && Math.abs(currentDistance - initialPinchDistance) > 10) {
             const ratioChange = currentDistance / initialPinchDistance;
             const ns = Math.min(MAX_SCALE, Math.max(MIN_SCALE, initialScale * ratioChange));
-            
+
             const r = viewport.getBoundingClientRect();
             const viewportMx = mx - r.left;
             const viewportMy = my - r.top;
-            
+
             // Pan relative to mid-point drag
             const currentPanX = panOriginTx + (mx - touchStartX);
             const currentPanY = panOriginTy + (my - touchStartY);
-            
+
             // Apply zoom
             const ratio = ns / initialScale;
             tx = viewportMx - ratio * (viewportMx - currentPanX);
@@ -3383,118 +3383,118 @@ union A,B,C["All"]:2`,
         isRendering = true;
 
         try {
-        // ── Step 1: Re-render diagram with light (default) theme ──
-        const code = editor.value.trim();
-        if (!code) throw new Error('No diagram code to export');
+          // ── Step 1: Re-render diagram with light (default) theme ──
+          const code = editor.value.trim();
+          if (!code) throw new Error('No diagram code to export');
 
-        // Save current mermaid theme, switch to light for export
-        const savedTheme = mermaidTheme;
-        mermaidTheme = 'default';
-        initMermaid();
-
-        // Render in a hidden off-screen container
-        const tmpContainer = document.createElement('div');
-        tmpContainer.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1500px;height:1000px;';
-        document.body.appendChild(tmpContainer);
-
-        const tmpId = 'export_' + Date.now();
-        let exportSvgHtml;
-        try {
-          const result = await mermaid.render(tmpId, code, tmpContainer);
-          exportSvgHtml = result.svg;
-        } finally {
-          tmpContainer.remove();
-          // Restore original theme immediately
-          mermaidTheme = savedTheme;
+          // Save current mermaid theme, switch to light for export
+          const savedTheme = mermaidTheme;
+          mermaidTheme = 'default';
           initMermaid();
-        }
 
-        // Parse the fresh light-theme SVG
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = exportSvgHtml;
-        const freshSvg = wrapper.querySelector('svg');
-        if (!freshSvg) throw new Error('Failed to render export SVG');
+          // Render in a hidden off-screen container
+          const tmpContainer = document.createElement('div');
+          tmpContainer.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1500px;height:1000px;';
+          document.body.appendChild(tmpContainer);
 
-        // ── Step 2: Measure dimensions ──
-        // Temporarily insert into DOM to measure (off-screen)
-        const measureDiv = document.createElement('div');
-        measureDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-        measureDiv.appendChild(freshSvg);
-        document.body.appendChild(measureDiv);
-
-        let w = freshSvg.getBoundingClientRect().width;
-        let h = freshSvg.getBoundingClientRect().height;
-
-        const attrW = parseFloat(freshSvg.getAttribute('width'));
-        const attrH = parseFloat(freshSvg.getAttribute('height'));
-        if (attrW && attrW > 0) w = attrW;
-        if (attrH && attrH > 0) h = attrH;
-
-        // Inline computed styles from the measured SVG
-        const clone = freshSvg.cloneNode(true);
-        inlineStyles(freshSvg, clone);
-
-        measureDiv.remove();
-
-        // ── Step 3: Prepare standalone SVG ──
-        clone.setAttribute('width', w);
-        clone.setAttribute('height', h);
-        if (!clone.getAttribute('viewBox')) {
-          clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
-        }
-        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-
-        // Force white background
-        const bgColor = '#ffffff';
-
-        // Remove any background from SVG root
-        clone.removeAttribute('style');
-        clone.style.cssText = 'background:transparent;';
-
-        // Insert white background rect as first element
-        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('width', '100%');
-        bgRect.setAttribute('height', '100%');
-        bgRect.setAttribute('fill', bgColor);
-        clone.insertBefore(bgRect, clone.firstChild);
-
-        // Add fallback font
-        const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-        styleEl.textContent = `* { font-family: 'JetBrains Mono', 'Segoe UI', 'Arial', monospace, sans-serif; }`;
-        clone.insertBefore(styleEl, clone.firstChild);
-
-        // Handle foreignObject xhtml namespace
-        clone.querySelectorAll('foreignObject').forEach(fo => {
-          const children = fo.children;
-          for (let i = 0; i < children.length; i++) {
-            children[i].setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+          const tmpId = 'export_' + Date.now();
+          let exportSvgHtml;
+          try {
+            const result = await mermaid.render(tmpId, code, tmpContainer);
+            exportSvgHtml = result.svg;
+          } finally {
+            tmpContainer.remove();
+            // Restore original theme immediately
+            mermaidTheme = savedTheme;
+            initMermaid();
           }
-        });
 
-        // ── Step 4: Render to canvas via data URL ──
-        const serializer = new XMLSerializer();
-        const svgString = serializer.serializeToString(clone);
-        const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+          // Parse the fresh light-theme SVG
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = exportSvgHtml;
+          const freshSvg = wrapper.querySelector('svg');
+          if (!freshSvg) throw new Error('Failed to render export SVG');
 
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = () => reject(new Error('Failed to load SVG image for export'));
-          img.src = dataUrl;
-        });
+          // ── Step 2: Measure dimensions ──
+          // Temporarily insert into DOM to measure (off-screen)
+          const measureDiv = document.createElement('div');
+          measureDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+          measureDiv.appendChild(freshSvg);
+          document.body.appendChild(measureDiv);
 
-        const scaleFactor = 2;
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = w * scaleFactor;
-        exportCanvas.height = h * scaleFactor;
-        const ctx = exportCanvas.getContext('2d');
+          let w = freshSvg.getBoundingClientRect().width;
+          let h = freshSvg.getBoundingClientRect().height;
 
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-        ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+          const attrW = parseFloat(freshSvg.getAttribute('width'));
+          const attrH = parseFloat(freshSvg.getAttribute('height'));
+          if (attrW && attrW > 0) w = attrW;
+          if (attrH && attrH > 0) h = attrH;
 
-        return { pngDataUrl: exportCanvas.toDataURL('image/png', 1.0), w, h };
+          // Inline computed styles from the measured SVG
+          const clone = freshSvg.cloneNode(true);
+          inlineStyles(freshSvg, clone);
+
+          measureDiv.remove();
+
+          // ── Step 3: Prepare standalone SVG ──
+          clone.setAttribute('width', w);
+          clone.setAttribute('height', h);
+          if (!clone.getAttribute('viewBox')) {
+            clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+          }
+          clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+          // Force white background
+          const bgColor = '#ffffff';
+
+          // Remove any background from SVG root
+          clone.removeAttribute('style');
+          clone.style.cssText = 'background:transparent;';
+
+          // Insert white background rect as first element
+          const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          bgRect.setAttribute('width', '100%');
+          bgRect.setAttribute('height', '100%');
+          bgRect.setAttribute('fill', bgColor);
+          clone.insertBefore(bgRect, clone.firstChild);
+
+          // Add fallback font
+          const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+          styleEl.textContent = `* { font-family: 'JetBrains Mono', 'Segoe UI', 'Arial', monospace, sans-serif; }`;
+          clone.insertBefore(styleEl, clone.firstChild);
+
+          // Handle foreignObject xhtml namespace
+          clone.querySelectorAll('foreignObject').forEach(fo => {
+            const children = fo.children;
+            for (let i = 0; i < children.length; i++) {
+              children[i].setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+            }
+          });
+
+          // ── Step 4: Render to canvas via data URL ──
+          const serializer = new XMLSerializer();
+          const svgString = serializer.serializeToString(clone);
+          const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error('Failed to load SVG image for export'));
+            img.src = dataUrl;
+          });
+
+          const scaleFactor = 2;
+          const exportCanvas = document.createElement('canvas');
+          exportCanvas.width = w * scaleFactor;
+          exportCanvas.height = h * scaleFactor;
+          const ctx = exportCanvas.getContext('2d');
+
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+          ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+
+          return { pngDataUrl: exportCanvas.toDataURL('image/png', 1.0), w, h };
 
         } finally {
           isRendering = false;
