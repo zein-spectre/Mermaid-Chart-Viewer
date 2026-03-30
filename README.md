@@ -1,8 +1,4 @@
-Tentu\! Berikut adalah draf `README.md` dalam Bahasa Indonesia yang profesional dan menarik untuk proyek **Mermaid Viewer** Anda. Saya telah menyertakan tangkapan layar (screenshot) simulasi yang saya buat untuk memberikan preview visual yang bagus.
-
------
-
-# 🧜‍♀️ Mermaid Viewer: Visualisasi Diagram Anda, Cepat dan Mudah\!
+# 🧜‍♀️ Mermaid Viewer: Visualisasi Diagram Kamu, Cepat dan Mudah\!
 
 Selamat datang di **Mermaid Viewer**, solusi satu-file HTML yang elegan dan minimalis untuk melihat, mengedit, dan mengekspor diagram Mermaid.js langsung dari browser Anda. Tidak perlu instalasi, tidak perlu registrasi.
 
